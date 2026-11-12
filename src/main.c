@@ -174,6 +174,8 @@ void overlay_add(const char *text, int kind) {
     if (kind != OVERLAY_INFO) log_add(text, kind);
     snprintf(tagged, sizeof tagged, "[isaaclua] %s", text);
     plugin_log(tagged);
+    extern bool g_errors_on;
+    if (kind != OVERLAY_INFO && !g_errors_on) return;  // errors.log only (isaaclua.ini errors = 1 shows them)
     memmove(&s_overlay[0], &s_overlay[1], sizeof(OverlayLine) * (OVERLAY_LINES - 1));
     OverlayLine *l = &s_overlay[OVERLAY_LINES - 1];
     size_t n = strcspn(text, "\n");  // first line only on screen (the log keeps the traceback)

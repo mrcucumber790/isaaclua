@@ -7,7 +7,7 @@ adds Lua 5.3 (the same version as on PC) to the game and rebuilds the PC modding
 game's own code. PC mods (`main.lua`, `RegisterMod`, `mod:AddCallback(...)`, `resources/`, `content/`)
 are loaded as they are, without changing their files.
 
-Current version: **0.99.162**.
+Current version: **1.0.0**.
 
 ## What works
 
@@ -38,7 +38,7 @@ other build of the game the plugin turns itself off.
 2. Copy the `atmosphere/` folder from the zip to the root of the SD card.
 3. Put PC mods into `sd:/atmosphere/contents/010021C000B6A000/romfs/mods/`, one folder per mod, exactly
    as in the PC `mods` folder. You can take them from your PC game or from the Steam Workshop.
-4. Start the game. In a run, a line at the top of the screen shows `isaaclua v0.99.162 (Lua 5.3.6), N mod(s) loaded`.
+4. Start the game. In a run, a line at the top of the screen shows `isaaclua v1.0.0 (Lua 5.3.6), N mod(s) loaded`.
 
 To turn a mod off, put an empty `disable.it` file in its folder, or use the Mods menu.
 
@@ -49,6 +49,7 @@ Settings live in `romfs/isaaclua.ini`. Every option is described inside the file
 | Setting | What it does |
 |---|---|
 | `language = ru` | The language mods see. By default it is the game's language. |
+| `errors = 1` | Shows mod errors and warnings at the top of the screen. They are off by default and always go to `errors.log`. |
 | `perf = 1` | Shows FPS, Lua time and the slowest mods at the bottom of the screen. |
 | `menu_scale = 0.9` | The size of Mod Config Menu. |
 | `keyboard = PLUS+MINUS` | The buttons that open the on-screen keyboard. |
@@ -70,6 +71,7 @@ Settings live in `romfs/isaaclua.ini`. Every option is described inside the file
   - Atmosphère's romfs has a file-count limit: thousands of mod files together can hang the game at boot.
 - **Turning a mod off while the game is running can break mods that depend on it.** For example, StageAPI
   is needed by Minimap API's map and Fiend Folio. Restart the game after changing the mod set.
+- **Mod errors are not shown on screen by default.** Set `errors = 1` to see them.
 - **`errors.log` is rewritten at every launch.** It is the log of mod errors, kept in the game's save.
   Back it up right after a problem.
 

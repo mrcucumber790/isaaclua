@@ -1,6 +1,6 @@
 name: Проблема / Bug report
 description: Игра вылетает, мод не работает, ошибка на экране / Crash, a mod does not work, an error on screen
-title: "[0.99.x] <мод>: <что случилось>"
+title: "[1.0.x] <мод>: <что случилось>"
 labels: [bug]
 body:
   - type: markdown
@@ -12,8 +12,8 @@ body:
     id: version
     attributes:
       label: Версия isaaclua / isaaclua version
-      description: Строка вверху экрана в забеге, например `isaaclua v0.99.162 (Lua 5.3.6), 12 mod(s) loaded` / the line at the top of the screen in a run
-      placeholder: isaaclua v0.99.162, 12 mod(s) loaded
+      description: Строка вверху экрана в забеге, например `isaaclua v1.0.0 (Lua 5.3.6), 12 mod(s) loaded` / the line at the top of the screen in a run
+      placeholder: isaaclua v1.0.0, 12 mod(s) loaded
     validations:
       required: true
   - type: input

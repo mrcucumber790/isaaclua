@@ -503,6 +503,13 @@ static char *trim(char *s) {
 char g_mod_language[8];
 float g_menu_scale;
 bool g_perf;  // isaaclua.ini perf = 1: frame timings on screen
+/* isaaclua.ini errors = 1: mod errors and warnings on screen (always in errors.log). Off by default in the
+ * release (Egor, 1.0.0: players should not see them), on in the debug build */
+#ifdef ISAACLUA_DEBUG
+bool g_errors_on = true;
+#else
+bool g_errors_on = false;
+#endif
 
 /*   language = ru              Options.Language for mods (default: the game's language)
  *   keyboard = PLUS+MINUS      button combo that opens the keyboard (two buttons)
@@ -552,6 +559,8 @@ void kb_load_config(void) {
                 extern bool g_autotest_shots;
                 g_autotest_shots = !(strcmp(v, "0") == 0 || strcasecmp(v, "off") == 0 || strcasecmp(v, "false") == 0);
 #endif
+            } else if (strcasecmp(k, "errors") == 0) {
+                g_errors_on = strcmp(v, "1") == 0 || strcasecmp(v, "on") == 0 || strcasecmp(v, "true") == 0;
             } else if (strcasecmp(k, "perf") == 0) {
                 g_perf = strcmp(v, "1") == 0 || strcasecmp(v, "on") == 0 || strcasecmp(v, "true") == 0;
             } else if (strcasecmp(k, "keyboard") == 0) {
