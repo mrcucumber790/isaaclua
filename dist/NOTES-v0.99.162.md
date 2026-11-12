@@ -1,19 +1,15 @@
-**isaaclua 0.99.162**: Lua-моды в формате ПК для The Binding of Isaac: Repentance на Nintendo Switch (1.7.9b, 010021C000B6A000). Нужна Atmosphere.
+**isaaclua 0.99.162** lets PC Lua mods run on The Binding of Isaac: Repentance for Nintendo Switch. It needs Atmosphère.
 
-Плагин встраивает в игру Lua 5.3 и запускает моды ПК-версии, не меняя их файлов. Вызываются все колбэки ПК, а из 1498 имён API ПК (IsaacDocs) есть 1474. Моды грузят свои `resources/` и `content/` и сохраняют настройки. Есть экранная клавиатура и консоль.
+**The zip holds only the loader and its settings. It contains no mods.**
 
-**В архиве только загрузчик и настройки, модов нет.** Моды бери с ПК.
+### Install
+1. Copy `atmosphere/` from the zip to the root of the SD card.
+2. Put PC mods into `sd:/atmosphere/contents/010021C000B6A000/romfs/mods/<mod folder>/`, as in the PC `mods` folder.
+3. Start the game. In a run, a line at the top of the screen reads `isaaclua v0.99.162 (Lua 5.3.6), N mod(s) loaded`.
 
-### Установка
-1. Скопируй папку `atmosphere/` из архива в корень SD-карты.
-2. Положи моды в `sd:/atmosphere/contents/010021C000B6A000/romfs/mods/<папка мода>/`, как в папку `mods` на ПК.
-3. Запусти игру. В забеге вверху экрана появится строка `isaaclua v0.99.162 (Lua 5.3.6), N mod(s) loaded`.
+Something wrong? [Open an issue](https://github.com/mrcucumber790/isaaclua/issues/new/choose). The form lists the files to attach.
 
-Если что-то не работает, [открой issue по форме](https://github.com/mrcucumber790/isaaclua/issues/new/choose). Там написано, какие файлы приложить: `errors.log`, отчёт о вылете, список модов.
-
-### Новое в 0.99.162
-- Добавлены недостающие части API: двери, какашки, ямы, камни, комната, `SpawnGridIndex`, `TearsOffset` и др.
-- `EntityPlayer:GetName()` возвращает имя персонажа, а не ключ `#ISAAC_NAME`.
-- Пропали рывки по 15-20 мс: сборщик мусора Lua теперь запускается реже.
-
-Проверено на консоли.
+### Changes in 0.99.162
+- More of the PC API: doors, poops, pits, rocks, room fields, `SpawnGridIndex`, `TearsOffset` and more. 1474 of 1498 PC API names now exist.
+- `EntityPlayer:GetName()` returns the character's name instead of `#ISAAC_NAME`.
+- The Lua garbage collector runs less often, so the 15–20 ms stutters are gone.

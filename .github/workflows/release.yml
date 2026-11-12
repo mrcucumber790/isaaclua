@@ -1,10 +1,10 @@
 name: release
 # Publishes dist/isaaclua_v<version>.zip (the build tested on the console) as a GitHub Release
-# when dist/NOTES-v<version>.md is pushed to main.
+# when dist/NOTES-v<version>.md or the zip is pushed to main (an existing release gets the new zip and notes).
 on:
   push:
     branches: [main]
-    paths: ['dist/NOTES-v*.md']
+    paths: ['dist/NOTES-v*.md', 'dist/*.zip']
   workflow_dispatch:
 permissions:
   contents: write
@@ -21,9 +21,13 @@ jobs:
           for n in dist/NOTES-v*.md; do
             v=${n#dist/NOTES-v}; v=${v%.md}
             tag=v$v
-            if gh release view "$tag" >/dev/null 2>&1; then echo "$tag exists"; continue; fi
             z=dist/isaaclua_v$v.zip
             test -f "$z"
             sha256sum "$z" | cut -d' ' -f1 > "$z.sha256"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release upload "$tag" "$z" "$z.sha256" --clobber
+              gh release edit "$tag" --notes-file "$n"
+              continue
+            fi
             gh release create "$tag" "$z" "$z.sha256" --target "$GITHUB_SHA" --title "isaaclua $v" --notes-file "$n" --latest
           done

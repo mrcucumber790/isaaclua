@@ -1,32 +1,34 @@
-# Покрытие API ПК-версии в isaaclua 0.99.162
+# PC API coverage in isaaclua 0.99.162
 
-Проверено на консоли (2026-11-12): мод `apichk` обращается к каждому имени из IsaacDocs у настоящего
-объекта в забеге (игрок, комната, дверь, слеза…) и у глобальной таблицы класса. **Есть 1474 из 1498.**
-«Есть» значит, что имя отвечает; что оно работает как на ПК, проверено отдельно для того, что нужно
-проверенным модам.
+Checked on the Switch on 2026-11-12. The test mod `apichk` reads every name from IsaacDocs, both on a
+real object in a run (player, room, door, tear and so on) and on the class's global table.
 
-## Нет в загрузчике (24)
+**1474 of 1498 names exist.** "Exists" means the name answers. Whether it behaves exactly as on PC was
+checked separately, for the names the tested mods need.
 
-| API | Почему нет |
+## Missing (24)
+
+| API | Why |
 |---|---|
-| `Color:Color`, `KColor:KColor`, `RNG:RNG`, `Vector:Vector` | конструктор, вызванный у готового объекта; на ПК это побочный эффект LuaBridge, моды так не пишут. `Color(...)`, `Vector(...)` и т.д. работают |
-| `Entity.SplatColor` | поле не найдено в Switch-версии |
-| `EntityLaser.HomingLaser` | класс `HomingLaser` на Switch есть, но в API ПК он пустой |
-| `EntityPlayer.FriendBallEnemy` | нужен класс `EntityDesc`, которого в загрузчике нет |
-| `EntityPlayer.SecondaryActiveItem` | поле не найдено |
-| `EntityProjectile.Damage` | поле не найдено |
-| `EntityTear.Bounced`, `EntityTear.CanTriggerStreakEnd`, `EntityTear.PosDisplacement` | смещения на Switch не подтверждены |
-| `Game:AddPixelation` | на Switch эффект хранится иначе (список у `Game`) |
-| `Game:GetAmbush`, `Game:GetFont` | классов `Ambush` и шрифта игры в загрузчике нет |
-| `Game:SpawnEntityDesc` | нужен класс `EntityDesc` |
-| `GridEntityDoor:GetSpriteOffset` | смещение не подтверждено |
-| `GridEntityRock.FrameCnt` | смещение не подтверждено |
-| `Room:GetDeliriumDistance`, `Room:GetLRoomAreaDesc`, `Room:GetLRoomTileDesc`, `Room:GetLavaIntensity`, `Room:InvalidatePickupVision`, `Room:TryPlaceLadder` | функций нет среди экспортов Switch, смещения не подтверждены |
+| `Color:Color`, `KColor:KColor`, `RNG:RNG`, `Vector:Vector` | A constructor called on an existing object. On PC this is a side effect of LuaBridge, and mods don't use it. `Color(...)`, `Vector(...)` and the others work. |
+| `Entity.SplatColor` | The field was not found in the Switch build. |
+| `EntityLaser.HomingLaser` | The PC API exposes nothing on this class. |
+| `EntityPlayer.FriendBallEnemy`, `Game:SpawnEntityDesc` | Need the `EntityDesc` class, which the loader doesn't have yet. |
+| `EntityPlayer.SecondaryActiveItem`, `EntityProjectile.Damage` | The fields were not found. |
+| `EntityTear.Bounced`, `EntityTear.CanTriggerStreakEnd`, `EntityTear.PosDisplacement` | The offsets on Switch are not confirmed. |
+| `Game:AddPixelation` | The Switch build stores this effect differently. |
+| `Game:GetAmbush`, `Game:GetFont` | The loader doesn't have these classes yet. |
+| `GridEntityDoor:GetSpriteOffset`, `GridEntityRock.FrameCnt` | The offsets are not confirmed. |
+| `Room:GetDeliriumDistance`, `Room:GetLRoomAreaDesc`, `Room:GetLRoomTileDesc`, `Room:GetLavaIntensity`, `Room:InvalidatePickupVision`, `Room:TryPlaceLadder` | Not exported by the Switch build, and the offsets are not confirmed. |
 
-Ни одно из этих имён не встречается в модах, проверенных на консоли. Если мод обращается к имени,
-которого нет, вверху экрана появляется жёлтая строка `not on Switch yet: <имя>`, мод продолжает работать.
+None of these names is used by the mods tested on the console. When a mod uses a missing name, a
+yellow line `not on Switch yet: <name>` appears at the top of the screen, and the mod keeps running.
 
-## Не проверялись
+## Not checked
 
-Классы, которые `apichk` не может создать в обычном забеге: `GridEntityPressurePlate`,
-`FontRenderSettings`, `ItemConfig_Costume`, контейнеры `CppContainer_*`.
+Some classes can't be created in a normal run, so `apichk` skips them:
+
+- `GridEntityPressurePlate`
+- `FontRenderSettings`
+- `ItemConfig_Costume`
+- the `CppContainer_*` containers
