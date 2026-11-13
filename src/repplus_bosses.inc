@@ -384,5 +384,7 @@ static int core_repplus_ai(lua_State *l) {
     lua_pushinteger(l, s_rpb_poker_calls);
     lua_pushinteger(l, s_rpb_poker_seen);
     lua_pushinteger(l, s_rpb_wof_calls);
-    return 10;
+    lua_pushinteger(l, s_rp_astral_calls);
+    lua_pushinteger(l, s_rp_botd_calls);
+    return 12;
 }

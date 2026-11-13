@@ -7,7 +7,7 @@
 -- repplus_data.lua (tools/gen_data.py), read once and dropped. Turning the mod off in the Mods menu
 -- turns all of this off. Full change list and status: isaac-repplus/CHANGES.md.
 (function()
-  local VERSION = "0.6.112"
+  local VERSION = "0.6.113"
   REPPLUS_VERSION = VERSION
   local DIR, NAME = "rom:/mods/isaac-repplus/", "isaac-repplus"
   local LAST_VANILLA = 732
@@ -514,6 +514,212 @@
     p:AddKeys(poop - p:GetNumKeys())
     p:AddPoopMana(math.min(keys, p:GetMaxPoopMana()) - poop)
   end, 3)
+  -- Breaking the mirror in Downpour / Dross II gives the player who broke it -7 luck (1.9.7.13; REP+ door
+  -- damage 0x70ff1a: after setting STATE_MIRROR_BROKEN it calls Entity_Player::AddLuck(-7) 0x7b2560 on the
+  -- source's player; PC 1.7.9b 0x6e033f only sets the flag). Here: when the flag turns on during play the nearest
+  -- player gets the penalty; the flag is kept in the run's save, so a continued run gives it to player 1.
+  do
+    local MIRROR = 23
+    local seen, breaker = nil, nil
+    local function mirror_broken() return Game():GetStateFlag(MIRROR) end
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_GAME_STARTED, 10000, function()
+      seen, breaker = mirror_broken(), nil
+    end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_UPDATE, 10000, function()
+      if state ~= "ready" then return end
+      local b = mirror_broken()
+      if seen == nil then seen = b return end
+      if b and not seen then
+        local best, bd
+        local doors = Isaac.GetPlayer(0).Position
+        local room = Game():GetRoom()
+        for i = 0, 7 do
+          local d = room:GetDoor(i)
+          if d and d.TargetRoomIndex == -100 then doors = d.Position end
+        end
+        for i = 0, Game():GetNumPlayers() - 1 do
+          local p = Isaac.GetPlayer(i)
+          local dd = p.Position:Distance(doors)
+          if not bd or dd < bd then best, bd = i, dd end
+        end
+        breaker = best or 0
+        local p = Isaac.GetPlayer(breaker)
+        p:AddCacheFlags(CacheFlag.CACHE_LUCK)
+        p:EvaluateItems()
+      end
+      seen = b
+    end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_EVALUATE_CACHE, 10000, function(_, p, flag)
+      if state ~= "ready" or not mirror_broken() then return end
+      local idx = breaker or 0
+      if GetPtrHash(p) == GetPtrHash(Isaac.GetPlayer(idx)) then p.Luck = p.Luck - 7 end
+    end, CacheFlag.CACHE_LUCK)
+  end
+  -- Double angel rooms bring two different angels (1.9.7.13 "two different angels, missing key piece first"):
+  -- the first statue gives the angel of the missing key piece as in 1.7.9b; a second angel of the same kind
+  -- spawned while the first is in the room becomes the other one (Uriel 271 <-> Gabriel 272).
+  -- Halves from Meat Cleaver (spawner = the angel) are left alone.
+  do
+    local given = {}
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_NEW_ROOM, 10000, function() given = {} end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_PRE_ENTITY_SPAWN, 10000, function(_, t, v, sub, pos, vel, spawner, seed)
+      if state ~= "ready" or (t ~= 271 and t ~= 272) or Game():GetRoom():GetType() ~= RoomType.ROOM_ANGEL then return end
+      if spawner and (spawner.Type == 271 or spawner.Type == 272) then return end
+      local fr, same = Game():GetFrameCount(), given[t] == Game():GetFrameCount()
+      if not same then
+        for _, e in ipairs(Isaac.FindByType(t, -1, -1, false, false)) do
+          if e:Exists() and not e:IsDead() then same = true break end
+        end
+      end
+      local nt = same and (t == 271 and 272 or 271) or t
+      given[nt] = fr
+      if nt ~= t then return {nt, v, sub, seed} end
+    end)
+  end
+  -- Bob's Bladder (trinket 71) counts toward the Bob transformation (wiki REP+; 1.7.9b: HW 2 Bob items + the
+  -- trinket give no Bob). Holding it adds 1 to the player's Bob counter (Entity_Player::
+  -- increment_player_form_counter), dropping it takes the 1 back.
+  do
+    local inc = C.sym("_ZN15IsaacRepentance13Entity_Player29increment_player_form_counterENS_11ePlayerFormEi")
+    local held = {}
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_GAME_STARTED, 10000, function(_, continued)
+      held = {}
+      if continued then  -- the saved counter already has it
+        for i = 0, Game():GetNumPlayers() - 1 do
+          local p = Isaac.GetPlayer(i)
+          held[GetPtrHash(p)] = p:HasTrinket(71, false)
+        end
+      end
+    end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_PEFFECT_UPDATE, 10000, function(_, p)
+      if state ~= "ready" or not inc then return end
+      local h, k = p:HasTrinket(71, false), GetPtrHash(p)
+      if h ~= (held[k] or false) then
+        held[k] = h
+        local ep = C.ptr(p)
+        if ep then C.call(inc, "_pii", ep, PlayerForm.PLAYERFORM_BOB, h and 1 or -1) end
+      end
+    end)
+  end
+  -- Punching Bag (familiar 3.112) blocks enemy shots (wiki REP+ "Added in Repentance+"; HW 1.7.9b: a shot
+  -- flies through it). A hostile projectile touching the bag is destroyed, like other blocking familiars.
+  do
+    local bags, bagsFrame = {}, -1
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_PROJECTILE_UPDATE, 10000, function(_, pr)
+      if state ~= "ready" then return end
+      local f = Game():GetFrameCount()
+      if f ~= bagsFrame then bagsFrame, bags = f, Isaac.FindByType(3, FamiliarVariant.PUNCHING_BAG, -1, false, false) end
+      if #bags == 0 or pr:HasProjectileFlags(ProjectileFlags.CANT_HIT_PLAYER) then return end
+      for _, b in ipairs(bags) do
+        if b:Exists() and pr.Position:Distance(b.Position) <= b.Size + pr.Size then pr:Die() return end
+      end
+    end)
+  end
+  -- Forget Me Now (127) restarting the Chest / Dark Room keeps the Mega Satan door open (wiki REP+, 1.9.7.11;
+  -- 1.7.9b closes it again). The start room door to Mega Satan (target -7) is watched; if it was open when the
+  -- floor is regenerated by Forget Me Now, it is unlocked again in the new start room.
+  do
+    local open, fmn = false, false
+    local function msdoor()
+      local r = Game():GetRoom()
+      for i = 0, DoorSlot.NUM_DOOR_SLOTS - 1 do
+        local d = r:GetDoor(i)
+        if d and d.TargetRoomIndex == GridRooms.ROOM_MEGA_SATAN_IDX then return d end
+      end
+    end
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_GAME_STARTED, 10000, function() open, fmn = false, false end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_ITEM, 10000, function() fmn = open end, 127)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_NEW_LEVEL, 10000, function()
+      if not fmn then open = false end
+    end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_NEW_ROOM, 10000, function()
+      if state ~= "ready" or not fmn then return end
+      local lv = Game():GetLevel()
+      if lv:GetCurrentRoomIndex() ~= lv:GetStartingRoomIndex() then return end
+      fmn = false
+      local d = msdoor()
+      if d and not d:IsOpen() then d:TryUnlock(Isaac.GetPlayer(0), true) end
+    end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_UPDATE, 10000, function()
+      if open or Game():GetLevel():GetStage() ~= LevelStage.STAGE6 then return end
+      if Game():GetFrameCount() % 15 ~= 0 then return end
+      local d = msdoor()
+      if d and d:IsOpen() then open = true end
+    end)
+  end
+  -- Lasers with Sulfuric Acid / Terra tear flags (TEAR_ACID, TEAR_ROCK) also break doors (wiki REP+: "Lasers can
+  -- sometimes destroy rocks and doors"). 1.7.9b Entity_Laser::do_damage_grid (Switch 0xfd988) gives a laser hit on
+  -- a grid a 1 in 4 chance (Random(4)) to destroy it when the laser has those flags, rocks only. Here a closed door
+  -- the laser touches gets the same 1 in 4 chance on the laser's damage ticks (every 4th frame) to be blown open.
+  do
+    local function seg_dist(p, a, b)
+      local ab = b - a
+      local l2 = ab:LengthSquared()
+      if l2 < 1 then return p:Distance(a) end
+      local t = math.max(0, math.min(1, (p - a):Dot(ab) / l2))
+      return p:Distance(a + ab * t)
+    end
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_LASER_UPDATE, 10000, function(_, l)
+      if state ~= "ready" or l.FrameCount % 4 ~= 1 then return end
+      if not (l:HasTearFlags(TearFlags.TEAR_ACID) or l:HasTearFlags(TearFlags.TEAR_ROCK)) then return end
+      local sp = l.SpawnerEntity
+      if not sp or (sp.Type ~= EntityType.ENTITY_PLAYER and sp.Type ~= EntityType.ENTITY_FAMILIAR) then return end
+      local r = Game():GetRoom()
+      local a, b = l.Position, l:GetEndPoint()
+      for i = 0, DoorSlot.NUM_DOOR_SLOTS - 1 do
+        local d = r:GetDoor(i)
+        if d and not d:IsOpen() and seg_dist(d.Position, a, b) <= 30 + l.Size and l:GetDropRNG():RandomInt(4) == 0 then
+          d:TryBlowOpen(true, l)
+        end
+      end
+    end)
+  end
+  -- Locust trinkets (113-117) also give their locusts on every wave of a Challenge Room, Boss Rush and Greed mode
+  -- (REP+ 1.9.7.9). REP+ moved the TriggerNewRoom locust code into its own function (0x7c8bb0) and calls it for
+  -- every player after each wave spawns: Ambush spawn_wave / spawn_bossrush_wave (0x8337d0, 0x833ff0) and the
+  -- Greed wave (0x816cc0). Count per trinket = multiplier x k, k = 1, or with trinket 94 (multiplier 2: 2, 1/5
+  -- chance 3; multiplier 3: 2, 1/5 chance 4). Switch: Ambush wave index at Game+0x26faa8+0x3c, Greed wave =
+  -- Level.GreedModeWave; a change while the room is a wave room spawns the locusts.
+  do
+    local gsym, g = C.sym("_ZN15IsaacRepentance6g_GameE"), nil
+    local lastAmb, lastGreed = -1, -1
+    local function locusts()
+      for i = 0, Game():GetNumPlayers() - 1 do
+        local p = Isaac.GetPlayer(i)
+        for t = 113, 117 do
+          local m = p:GetTrinketMultiplier(t)
+          if m > 0 then
+            local k = 1
+            if p:HasTrinket(94, false) then
+              local m94 = p:GetTrinketMultiplier(94)
+              k = 2
+              if m94 == 2 and Random() % 5 == 0 then k = 3 elseif m94 >= 3 and Random() % 5 == 0 then k = 4 end
+            end
+            for _ = 1, m * k do
+              local e = Isaac.Spawn(3, FamiliarVariant.BLUE_FLY, t - 112, p.Position, Vector.Zero, p)
+              e:ClearEntityFlags(EntityFlag.FLAG_APPEAR)
+            end
+          end
+        end
+      end
+    end
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_NEW_ROOM, 10000, function() lastAmb, lastGreed = -1, -1 end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_UPDATE, 10000, function()
+      if state ~= "ready" or not gsym then return end
+      g = g or C.peek(gsym, 0, "p")
+      if not g then return end
+      local rt = Game():GetRoom():GetType()
+      if rt == RoomType.ROOM_CHALLENGE or rt == RoomType.ROOM_BOSSRUSH then
+        local w = C.peek(g, 0x26faa8 + 0x3c, "i32")
+        if lastAmb >= 0 and w > lastAmb and C.peek(g, 0x26faa8 + 0x38, "u8") ~= 0 then locusts() end
+        lastAmb = w
+      elseif Game():IsGreedMode() then
+        local w = Game():GetLevel().GreedModeWave
+        if lastGreed >= 0 and w > lastGreed then locusts() end
+        lastGreed = w
+      end
+    end)
+  end
   -- Ultra Greed's coins (293.0-3) devolve into a penny with D10 (REP+ 1.9.7.4: entities2.xml gives each a
   -- <devolve id="5.20.0"/>; 1.7.9b has no devolve entry, so Game::DevolveEnemy skips them).
   Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_ITEM, -10000, function(_, item)

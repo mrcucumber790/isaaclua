@@ -50,8 +50,13 @@ static float rp_tears_up(void *p, void *te) {
     return d;
 }
 
+static u32 *s_rp_astral_flags;  // Astral Projection in Boss Rush (below)
 HIDDEN __attribute__((used)) bool rp_te_has_effect_c(void *te, int id, uintptr_t sp, uintptr_t lr, void *player) {
     bool r = RP.te_has(te, id);
+    if (s_rp_astral_flags && lr == RP.base + 0x2a83b4u) {  // RP_SITE_ASTRAL_TE
+        *s_rp_astral_flags |= 1u;
+        s_rp_astral_flags = NULL;
+    }
     if (RP.on && lr == RP.base + RP_SITE_TEARS) {
         *(float *)(sp + RP_SP_TEARS_UP) += rp_tears_up(player, te);
         RP.tears_calls++;
@@ -194,7 +199,30 @@ static float rp_player_dmg(void *p, float amount, u64 flags, const void *ref) {
     return amount * 0.5f;
 }
 
+/* Astral Projection (677) in Boss Rush (REP+ wiki: 1.7.9b never triggers it there). Entity_Player::TakeDamage
+ * only starts it while the room's descriptor is not cleared (desc+0x50 bit 0), and the Boss Rush room stays
+ * "cleared" during its waves. Switch: HasCollectible(677) returns to 0x2a8384, then the flag is tested and,
+ * when clear, TemporaryEffects::HasEffect(677) returns to 0x2a83b4. While the Boss Rush ambush runs
+ * (room type 17, Ambush at Game+0x26faa8, running byte +0x38) the bit is dropped between the two calls. */
+#define RP_SITE_ASTRAL_HAS 0x2a8384u
+#define RP_SITE_ASTRAL_TE 0x2a83b4u
+static u32 s_rp_astral_calls;
+static void rp_astral_boss_rush(void) {
+    u8 *g = game_ptr(), *r = room_ptr();
+    if (!g || !r || *(s32 *)(r + 0x10) != 17 || !*(g + 0x26fae0)) return;
+    u8 *d = *(u8 **)(r + 8);
+    if (!d || !(*(u32 *)(d + 0x50) & 1)) return;
+    s_rp_astral_flags = (u32 *)(d + 0x50);
+    *s_rp_astral_flags &= ~1u;
+    s_rp_astral_calls++;
+}
+
 HIDDEN __attribute__((used)) bool rp_has_collectible_c(void *p, int id, bool only_real, uintptr_t lr) {
+    if (RP.on && id == 677 && lr == RP.base + RP_SITE_ASTRAL_HAS) {
+        bool h = RP.has(p, 677, only_real);
+        if (h) rp_astral_boss_rush();
+        return h;
+    }
     /* Black Powder (420), REP+ Entity_Player::GetBombScale 0x781263: it gives the Mr. Mega (106) bomb scale 1.5
      * (bigger explosion, 185 damage). Switch checks Mr. Mega for the scale in GetBombScale (returns to 0x2ba370)
      * and inlined in control_bombs (0x2ba9b8) and FireBomb (0x2e4330); those checks only pick the scale. */
@@ -1395,6 +1423,19 @@ static int rp_hk_full_charge(void *p, int slot, bool force) {
 typedef void (*RpAddSlowFn)(void *, void *, int, float, void *);
 static RpAddSlowFn s_rp_add_slowing;
 static u32 s_rp_web_skips;
+/* Book of the Dead (545), wiki REP+ ("Removed in Repentance+"): 1.7.9b upgrades a summoned friendly Bony to
+ * Bone Fly (25.4), Big Bony (830) or Revenant (841) only if that enemy killed Isaac once on the save file
+ * (PersistentGameData::GetBestiaryDeathCount, returns to 0x309b20 / 0x309b94 / 0x309c20 in UseActiveItem).
+ * REP+ drops the condition: those three calls answer 1. */
+typedef int (*RpDeathCountFn)(void *, u32, u32);
+static RpDeathCountFn s_rp_death_count;
+static u32 s_rp_botd_calls;
+static int rp_hk_death_count(void *pgd, u32 type, u32 var) {
+    uintptr_t o = (uintptr_t)__builtin_return_address(0) - RP.base;
+    if (RP.on && (o == 0x309b20u || o == 0x309b94u || o == 0x309c20u)) { s_rp_botd_calls++; return 1; }
+    return s_rp_death_count(pgd, type, var);
+}
+
 static void rp_hk_add_slowing(void *e, void *ref, int dur, float val, void *color) {
     uintptr_t lr = (uintptr_t)__builtin_return_address(0);
     if (RP.on && lr == RP.base + RP_SITE_WEB_SLOW && rp_is_player(e) &&
@@ -1992,6 +2033,9 @@ static void repplus_install(const ModView *v, const struct nnro_Module *m) {
     s_rp_add_slowing = (RpAddSlowFn)hook_got(v, "_ZN15IsaacRepentance6Entity10AddSlowingERKNS0_9EntityRefEifNS_8ColorModE",
                                              (void *)rp_hk_add_slowing);
     if (!s_rp_add_slowing) plugin_log("[isaac-repplus] Entity::AddSlowing GOT slot not found, no Evil Charm web immunity");
+    s_rp_death_count = (RpDeathCountFn)hook_got(
+        v, "_ZNK15IsaacRepentance18PersistentGameData21GetBestiaryDeathCountENS_11eEntityTypeEj", (void *)rp_hk_death_count);
+    if (!s_rp_death_count) plugin_log("[isaac-repplus] GetBestiaryDeathCount GOT slot not found, Book of the Dead as 1.7.9b");
     rp_mystuff_install(v);
     rp_bosses_install(v);  // last: its hooks chain to the ones above
 #else

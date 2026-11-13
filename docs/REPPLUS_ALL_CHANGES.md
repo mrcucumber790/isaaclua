@@ -420,6 +420,17 @@
 | Parasitoid | яйца от Technology и Brimstone | ✓✓ 0.6.72 (repplus.lua): удар лазером игрока с Parasitoid берёт тот же ролл Random(max(7 − удача, 2)) == 0, что слёзы (GetTearHitParams), и даёт белую замедляющую лужу и 1–2 синих мухи или паука |
 | Meat Cleaver | на ангеле (Uriel/Gabriel) только один ключ (патч 1.9.7.11; в 1.7.9b обе половины роняют свой кусок ключа) | ✓✓ 0.6.112 repplus.lua: после удара тесаком при ангеле в комнате второй кусок того же вида от ангела убирается; консоль: было 238 238, стало 238 |
 | Card Reading | зелёный портал в магазин среди порталов стартовой комнаты (патч 1.9.7.9) | ✓✓ 0.6.112 repplus.lua: при первом входе в стартовую комнату, если на этаже есть магазин, он попадает в пару с шансом 2/(k+1) (k = виды из 1.7.9b: сокровищница, босс, секретная), заменяя случайный портал игры; портал 1000.161 с SubType 1000 + индекс магазина, окрашен в зелёный. Консоль: стадии 1–8 — магазин на 3 из 6 этажей с магазином, в Womb нет; вход в портал → комната типа 2. Цвет взят зелёным тоном, не спрайтом REP+ |
+| Зеркало Downpour / Dross II | разбивший зеркало получает −7 удачи (патч 1.9.7.13, REP+ 0x70ff3b) | ✓✓ 0.6.113 repplus.lua (флаг состояния 23 + MC_EVALUATE_CACHE). Консоль: удача 0 → −7 |
+| Двойная ангельская комната | две статуи дают Уриила и Гавриила, а не двух одинаковых (патч 1.9.7.13) | ✓✓ 0.6.113 repplus.lua (MC_PRE_ENTITY_SPAWN). Консоль: статуи → 272, 271 |
+| Bob's Bladder | засчитывается в трансформацию Bob (вики) | ✓✓ 0.6.113 repplus.lua (increment_player_form_counter). Консоль: счётчик 2 → 3 (Bob), без брелка снова 2 |
+| Astral Projection | срабатывает в Boss Rush (вики) | ✓✓ 0.6.113 натив: TakeDamage проверяет флаг «комната зачищена» (Switch 0x2a83a4), в Boss Rush он стоит всю битву; на время проверки снимается, пока идёт Boss Rush. Консоль: удар в Boss Rush → призрак |
+| Punching Bag | блокирует выстрелы врагов (вики «Added in Repentance+», патч 1.9.7.11) | ✓✓ 0.6.113 repplus.lua: вражеский снаряд, коснувшийся мешка, исчезает. Консоль: раньше пролетал насквозь |
+| Forget Me Now | после перезапуска Сундука / Тёмной комнаты дверь к Mega Satan остаётся открытой (вики, патч 1.9.7.11) | ✓✓ 0.6.113 repplus.lua. Консоль: дверь открыта, комната Mega Satan сброшена |
+| Book of the Dead | Bone Fly, Big Bony и Revenant без условия «умереть от них хоть раз» (вики) | ✓✓ 0.6.113 натив: GetBestiaryDeathCount в UseActiveItem (Switch 0x309b20/0x309b94/0x309c20) отвечает 1 |
+| Sulfuric Acid / Terra | лазеры иногда выбивают двери (вики) | ✓✓ 0.6.113 repplus.lua: как do_damage_grid 1.7.9b (Switch 0xfd988, шанс 1/4 на тик урона) для закрытой двери под лазером. Консоль: 10 выстрелов без предмета — дверь закрыта, с Sulfuric Acid — выбита |
+| Брелки саранчи (113–117) | саранча на каждой волне Испытания, Boss Rush и Greed (патч 1.9.7.9) | ✓✓ 0.6.113 repplus.lua: REP+ вынес код в функцию 0x7c8bb0 и зовёт её после каждой волны (0x8337d0, 0x833ff0, Greed 0x816cc0). Консоль: Испытание, саранча на волнах 1 и 2; Greed не проверялся |
+| Azazel's Rage, Poke Go, тузы и Blood Puppy, Bot Fly, I AM ERROR на Alt Path | (вики / патчи) | — на Switch уже как в REP+ (консоль: Azazel's Rage копится за каждую волну, Poke Go Random(5), туз не трогает 3.241, Downpour I → ERROR → Dross II) |
+| The Stairway у T.Lazarus, Birthright у The Lost | (вики) | ✓✓ через данные REP+ (теги lazarussharedglobal / nolostbr уже применены, консоль) |
 | Hive Mind | урон саранчи Abyss x2, как у мух и пауков (Familiar::GetMultiplier 0x60dfa0) | ✓✓ 0.6.85: в 1.7.9b это уже так (саранча помечена как муха в EntityConfig), на консоли без перехвата удар саранчи 3.5 → 4.38 с Hive Mind, как с BFFS!; перехват 0.6.16–0.6.84 удваивал второй раз (6.12), убран |
 | Flush! | убивает Turdlings | ✓✓ 0.3.0 (на консоли 0.99.136: два Turdlet после Flush! исчезли) |
 | Plan C | смерть через 300 кадров в комнате Delirium и 345 у Mother вместо 90 (UseActiveItem 0x5be295) | ✓✓ 0.6.20 (repplus.lua) |
@@ -604,7 +615,7 @@
 - `GridEntity:Hurt` не было и в 1.7.9b-части загрузчика, добавлен вместе с `HurtWithSource`.
 
 
-○ Прочее из старого списка (сверить с exe): Options.JacobEsauControls, параметр IgnoreBosses у Entity:Add{Burn,Charmed,Fear,Freeze,MidasFreeze,Poison,Shrink,Slowing}, ItemPoolType у EntityPlayer:AddCollectible, ShowIcon и KColor у Game:Fadein/Fadeout, StackUpText у HUD:ShowItemText, Room:MamaMegaExplosion с необязательной позицией, BackdropType 61/62, новые значения ButtonAction.
+○ Прочее из старого списка (сверить с exe; Options.JacobEsauControls и Room:MamaMegaExplosion с позицией уже есть): параметр IgnoreBosses у Entity:Add{Burn,Charmed,Fear,Freeze,MidasFreeze,Poison,Shrink,Slowing}, ItemPoolType у EntityPlayer:AddCollectible, ShowIcon и KColor у Game:Fadein/Fadeout, StackUpText у HUD:ShowItemText, Room:MamaMegaExplosion с необязательной позицией, BackdropType 61/62, новые значения ButtonAction.
 
 ## 13. Онлайн (не переносится)
 
