@@ -29,6 +29,10 @@ jobs:
               files="$files $z $z.sha256"
             done
             if gh release view "$tag" >/dev/null 2>&1; then
+              if ! test -f dist/isaaclua_v$v-repplus.zip; then
+                gh release delete-asset "$tag" isaaclua_v$v-repplus.zip -y || true
+                gh release delete-asset "$tag" isaaclua_v$v-repplus.zip.sha256 -y || true
+              fi
               gh release upload "$tag" $files --clobber
               gh release edit "$tag" --notes-file "$n"
               continue

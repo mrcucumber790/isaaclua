@@ -44,7 +44,7 @@ To turn a mod off, put an empty `disable.it` file in its folder, or use the Mods
 
 ## Repentance+ build
 
-Every release has two files:
+Releases will have two files (the Repentance+ file is not published yet):
 
 - `isaaclua_v<version>.zip`: the mod loader only.
 - `isaaclua_v<version>-repplus.zip`: the same loader plus the `isaac-repplus` mod (now **0.6.113**). It brings
