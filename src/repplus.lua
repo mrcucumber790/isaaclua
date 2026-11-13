@@ -7,7 +7,7 @@
 -- repplus_data.lua (tools/gen_data.py), read once and dropped. Turning the mod off in the Mods menu
 -- turns all of this off. Full change list and status: isaac-repplus/CHANGES.md.
 (function()
-  local VERSION = "0.6.111"
+  local VERSION = "0.6.112"
   REPPLUS_VERSION = VERSION
   local DIR, NAME = "rom:/mods/isaac-repplus/", "isaac-repplus"
   local LAST_VANILLA = 732
@@ -403,6 +403,117 @@
     end, 100)
   end
 
+  -- Meat Cleaver (631) on an angel gives one key piece (1.9.7.11 "Using Meat Cleaver on an Angel will now award
+  -- only one Key Piece"). 1.7.9b: both halves of Uriel / Gabriel drop their key piece (HW: 238 238). After a
+  -- cleave with an angel in the room, the second key piece of the same kind dropped by an angel (SpawnerType
+  -- 271 / 272) in that room is removed.
+  do
+    local cleaved, seen = false, {}
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_ITEM, 10000, function()
+      if state ~= "ready" then return end
+      if #Isaac.FindByType(271, -1, -1, false, false) + #Isaac.FindByType(272, -1, -1, false, false) > 0 then
+        cleaved = true
+      end
+    end, 631)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_NEW_ROOM, 10000, function() cleaved, seen = false, {} end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_PICKUP_INIT, 10000, function(_, e)
+      if not cleaved or (e.SubType ~= 238 and e.SubType ~= 239) then return end
+      if e.SpawnerType ~= 271 and e.SpawnerType ~= 272 then return end
+      if seen[e.SubType] then e:Remove() else seen[e.SubType] = true end
+    end, 100)
+  end
+  -- Berkano (card 38), 1.9.7.9: 3 standard Abyss locusts (3.231.25) for the room instead of 3 blue flies and
+  -- 3 blue spiders; a Rune Shard rolling Berkano gives 1 locust instead of 1 fly + 1 spider (REP+ 0x7bea01:
+  -- Game::Spawn(3, 231, subtype 25) from the player). The blue flies / spiders the game just made are removed;
+  -- the locusts (which would follow the player like any spawned familiar) are removed on the next room.
+  do
+    local room_locusts = {}
+    local function fresh(v)
+      local t = {}
+      for _, f in ipairs(Isaac.FindByType(3, v, -1, false, false)) do if f.FrameCount == 0 then t[#t + 1] = f end end
+      return t
+    end
+    local function berkano(p, n)
+      for _, v in ipairs({43, 73}) do for _, f in ipairs(fresh(v)) do f:Remove() end end
+      for _ = 1, n do
+        local l = Isaac.Spawn(3, 231, 25, p.Position, Vector.Zero, p)
+        room_locusts[#room_locusts + 1] = EntityPtr(l)
+      end
+    end
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_CARD, 10000, function(_, card, p)
+      if state ~= "ready" or not p then return end
+      if card == 38 then berkano(p, 3)
+      elseif card == 55 and #fresh(43) == 1 and #fresh(73) == 1 then berkano(p, 1) end
+    end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_NEW_ROOM, 10000, function()
+      for _, r in ipairs(room_locusts) do if r.Ref and r.Ref:Exists() then r.Ref:Remove() end end
+      room_locusts = {}
+    end)
+  end
+  -- Card Reading (660), 1.9.7.9 "Added the shop to Card Reading's potential destinations": REP+ draws its two
+  -- start-room portals from treasure / boss / secret and the shop (a green portal). 1.7.9b (Switch Room::Init
+  -- 0x45dc8c) shuffles the kinds the floor has (treasure 0, boss 1, secret 2) and spawns two 1000.161. Here, on
+  -- the first visit of the start room: with k vanilla kinds and a shop on the floor, the shop is one of the two
+  -- with chance 2 / (k + 1) (both when k == 1), replacing a random one of the game's portals. The portal leads to
+  -- the shop through SubType 1000 + its grid index (see the bedroom portal below) and is tinted green.
+  do
+    local done_level = -1
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_NEW_ROOM, 10000, function()
+      if state ~= "ready" then return end
+      local g, level = Game(), Game():GetLevel()
+      local room = g:GetRoom()
+      if g:IsGreedMode() or level:GetCurrentRoomIndex() ~= level:GetStartingRoomIndex() or not room:IsFirstVisit() then return end
+      local stamp = level:GetStage() * 100 + level:GetStageType()
+      if done_level == stamp then return end
+      done_level = stamp
+      local any = false
+      for i = 0, g:GetNumPlayers() - 1 do if Isaac.GetPlayer(i):HasCollectible(660) then any = true end end
+      if not any then return end
+      local portals = {}
+      for _, e in ipairs(Isaac.FindByType(1000, 161, -1, false, false)) do
+        if e.SubType <= 2 then portals[#portals + 1] = e end
+      end
+      if #portals == 0 then return end
+      local shop, has = -1, {}
+      local rooms = level:GetRooms()
+      for i = 0, rooms.Size - 1 do
+        local d = rooms:Get(i)
+        local t = d and d.Data and d.Data.Type
+        if t == 2 and shop < 0 then shop = d.SafeGridIndex end
+        if t then has[t] = true end
+      end
+      if shop < 0 then return end
+      local k = 1 + (has[4] and 1 or 0) + (has[7] and 1 or 0)
+      local rng = RNG()
+      rng:SetSeed(room:GetSpawnSeed() ~= 0 and room:GetSpawnSeed() or 1, 35)
+      local pos
+      if #portals >= 2 then
+        if rng:RandomInt(k + 1) >= 2 then return end
+        local victim = portals[rng:RandomInt(#portals) + 1]
+        pos = victim.Position
+        victim:Remove()
+      else
+        local c = room:GetCenterPos()
+        local o = portals[1]
+        if math.abs(o.Position.X - c.X) < 20 then o.Position = Vector(c.X - 80, o.Position.Y) end
+        pos = Vector(2 * c.X - o.Position.X, o.Position.Y)
+      end
+      local e = Isaac.Spawn(1000, 161, 1000 + shop, pos, Vector.Zero, nil)
+      local col = Color(1, 1, 1, 1, 0, 0, 0)
+      col:SetColorize(0.35, 1.3, 0.35, 1)
+      e.Color = col
+    end)
+  end
+  -- Bombs Are Key (pill effect 3) with Tainted ??? (25), 1.9.7.11: swaps poops (poop mana, at most the player's
+  -- max) and keys instead of his (unused) bombs and keys. 1.7.9b swaps bombs and keys (HW: 5 keys 2 poops 1 bomb
+  -- -> 1 key 2 poops 5 bombs); after it the keys / bombs are put back and the poops swapped in.
+  Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_PILL, 10000, function(_, eff, p)
+    if state ~= "ready" or not p or p:GetPlayerType() ~= 25 then return end
+    local keys, bombs, poop = p:GetNumBombs(), p:GetNumKeys(), p:GetPoopMana()  -- before the game's swap
+    p:AddBombs(bombs - p:GetNumBombs())
+    p:AddKeys(poop - p:GetNumKeys())
+    p:AddPoopMana(math.min(keys, p:GetMaxPoopMana()) - poop)
+  end, 3)
   -- Ultra Greed's coins (293.0-3) devolve into a penny with D10 (REP+ 1.9.7.4: entities2.xml gives each a
   -- <devolve id="5.20.0"/>; 1.7.9b has no devolve entry, so Game::DevolveEnemy skips them).
   Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_ITEM, -10000, function(_, item)
@@ -1801,6 +1912,30 @@
     sp:LoadGraphics()
     sp:Play(g.anim or sp:GetDefaultAnimation(), true)
   end, 231)
+  -- Abyss locust damage by the item's quality (REP+ 1.9.7.9 Abyss rework): REP+ sets the locust's item config on
+  -- init (0x630ec7, GetCollectible(SubType)) and its hit (0x628a73) multiplies the damage by 0.5 / 0.75 / 1 / 1.5 / 2
+  -- for quality 0-4; the Apollyon's Best Friend locust counts as quality 3 (0x64bb60: trinket 186). 1.7.9b hits
+  -- with 1x for every quality (HW: 3.5 with Brimstone, Cain's Eye and the trinket's locust alike).
+  do
+    local QMULT = {[0] = 0.5, 0.75, 1, 1.5, 2}
+    local cfg, busy = Isaac.GetItemConfig(), false
+    local function locust_mult(sub)
+      if sub == 0 then return 1.5 end
+      local c = sub > 0 and cfg:GetCollectible(sub)
+      return c and QMULT[c.Quality] or 1
+    end
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_ENTITY_TAKE_DMG, -10000, function(_, e, amt, flags, src, cd)
+      if busy or state ~= "ready" or not src or src.Type ~= 3 or src.Variant ~= 231 then return end
+      local f = src.Entity
+      if not f then return end
+      local m = locust_mult(f.SubType)
+      if m == 1 then return end
+      busy = true
+      e:TakeDamage(amt * m, flags, src, cd)
+      busy = false
+      return false
+    end)
+  end
   -- TEAR_EGG on a hit, as REP+ ApplyTearFlagEffects does it (0x67cfe1..0x67d3f1): white creep (1000.44) at the hit
   -- position, BOIL_HATCH (vol 0.5, delay 2, pitch 1-1.2), then on a coin flip 1-2 blue flies, else 1-2 blue spiders
   -- thrown from the player

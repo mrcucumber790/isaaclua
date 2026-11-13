@@ -7,7 +7,7 @@ adds Lua 5.3 (the same version as on PC) to the game and rebuilds the PC modding
 game's own code. PC mods (`main.lua`, `RegisterMod`, `mod:AddCallback(...)`, `resources/`, `content/`)
 are loaded as they are, without changing their files.
 
-Current version: **1.0.3**.
+Current version: **1.0.4**.
 
 ## What works
 
@@ -38,7 +38,7 @@ other build of the game the plugin turns itself off.
 2. Copy the `atmosphere/` folder from the zip to the root of the SD card.
 3. Put PC mods into `sd:/atmosphere/contents/010021C000B6A000/romfs/mods/`, one folder per mod, exactly
    as in the PC `mods` folder. You can take them from your PC game or from the Steam Workshop.
-4. Start the game. In a run, a line at the top of the screen shows `isaaclua v1.0.3 (Lua 5.3.6), N mod(s) loaded`.
+4. Start the game. In a run, a line at the top of the screen shows `isaaclua v1.0.4 (Lua 5.3.6), N mod(s) loaded`.
 
 To turn a mod off, put an empty `disable.it` file in its folder, or use the Mods menu.
 
