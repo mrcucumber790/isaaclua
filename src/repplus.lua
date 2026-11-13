@@ -7,7 +7,7 @@
 -- repplus_data.lua (tools/gen_data.py), read once and dropped. Turning the mod off in the Mods menu
 -- turns all of this off. Full change list and status: isaac-repplus/CHANGES.md.
 (function()
-  local VERSION = "0.6.114"
+  local VERSION = "0.6.115"
   REPPLUS_VERSION = VERSION
   local DIR, NAME = "rom:/mods/isaac-repplus/", "isaac-repplus"
   local LAST_VANILLA = 732
@@ -2129,6 +2129,7 @@
     local i
     if f.SubType == 706 then i = f.InitSeed % #rows + 1
     else i = (locust_n[f.SubType] or 0) % #rows + 1; locust_n[f.SubType] = i end
+    f:GetData().rp_lrow = rows[i]
     local g = rows[i].gfx
     if not g then return end
     local sp = f:GetSprite()
@@ -2149,10 +2150,119 @@
       local c = sub > 0 and cfg:GetCollectible(sub)
       return c and QMULT[c.Quality] or 1
     end
+    -- Special locust effects (REP+ 0x649500, called from the locust's hit 0x628a55). locusts.xml's locustFlags (every
+    -- hit) and locustFlags2 (rolled with procChance) are bit numbers; locusts_data.lua keeps them as masks lf / lf2 + pc.
+    -- Flag 2 (Chaos, 3 Dollar Bill...) adds one of 22 effects (Random()%22, table 0x62ab0c): 17 tear effects, then
+    -- explosion, fart, butter bean fart, one of the 4 creeps, Black Powder. The tear effects are done here with the
+    -- status-effect calls of the Lua API; homing / shielded / bone / Jacob's Ladder / coal ones have no hit effect here.
+    -- Flags 4 / 64 / 512 / 262144 (duplicate locusts, Mom's Knife, Telekinesis, bums) are not in this function.
+    local NO_REROLL = {[1] = true, [17] = true, [33] = true, [245] = true, [292] = true, [960] = true, [965] = true}
+    local CREEP_COLOR = {[0x2000] = nil, [0x4000] = {0, 0, 0, 1, 2.2, 2.2, 0}, [0x8000] = {1, 1, 1, 1, 0.8, -1, -1},
+      [0x10000] = {0, 0, 0, 1, 0.6, 0.6, 2.2}}
+    local CREEPS = {0x2000, 0x4000, 0x8000, 0x10000}
+    local RAND_TEAR = {
+      function(pl, e) e:AddPoison(EntityRef(pl), 63, pl.Damage) end,                       -- 4 poison
+      function(pl, e) e:AddSlowing(EntityRef(pl), 63, 0.5, Color(0.5, 0.5, 0.5, 1)) end,    -- 3 slow
+      false,                                                                                 -- 34
+      function(pl, e) e:AddFear(EntityRef(pl), 63) end,                                      -- 20 fear
+      function(pl, e) e:AddBurn(EntityRef(pl), 63, pl.Damage) end,                           -- 22 burn
+      function(pl, e) e:AddCharmed(EntityRef(pl), 63) end,                                   -- 13 charm
+      false,                                                                                 -- 66 magnetize (no Lua call in 1.7.9b)
+      function(pl, e, f)                                                                     -- 64 punch
+        e:AddVelocity((e.Position - f.Position):Resized(10)) end,
+      function(pl, e) e:AddFreeze(EntityRef(pl), 63) end,                                    -- 5 freeze
+      function(pl, e) e:AddConfusion(EntityRef(pl), 63, false) end,                          -- 14 confusion
+      function(pl, e) e:AddShrink(EntityRef(pl), 63) end,                                    -- 43 god's flesh
+      false,                                                                                 -- 55 Jacob's Ladder
+      function(pl, e)                                                                        -- 39 Holy Light
+        local b = Isaac.Spawn(1000, 19, 0, e.Position, Vector.Zero, pl)
+        b.CollisionDamage = pl.Damage * 3 end,
+      false, false, false,                                                                   -- 2 homing, 51 bone, 73 coal
+      function(pl, e) if e.AddMidasFreeze then e:AddMidasFreeze(EntityRef(pl), 63) end end,  -- 53 midas
+    }
+    local function hits(f, e, fx, lf, amt)
+      local pl = f.Player or Isaac.GetPlayer(0)
+      local g, sfx, pos = Game(), SFXManager(), e.Position
+      if lf & 1 ~= 0 then
+        g:BombExplosionEffects(f.Position, 20, TearFlags.TEAR_NORMAL, f.Color, f, 0.6, true, false, 0)
+      end
+      if lf & 8 ~= 0 and e:IsActiveEnemy(false) and not e:IsBoss() and not NO_REROLL[e.Type]
+          and not (e.Type == 885 and e.Variant == 10) then
+        sfx:Play(SoundEffect.SOUND_EDEN_GLITCH)
+        g:RerollEnemy(e)
+      end
+      if lf & 16 ~= 0 then pl:UseActiveItem(CollectibleType.COLLECTIBLE_NECRONOMICON, UseFlag.USE_NOANIM, -1) end
+      if lf & 32 ~= 0 and e:IsActiveEnemy(false) and not e:IsBoss() then
+        -- Eraser: the enemy kind is gone (REP+ calls the Eraser tear's erase); here: every one of it in the room
+        sfx:Play(SoundEffect.SOUND_PLOP)
+        local t, v = e.Type, e.Variant
+        for _, o in ipairs(Isaac.FindByType(t, v)) do if not o:IsBoss() then o:Remove() end end
+      end
+      if lf & 128 ~= 0 then  -- Larynx scream: 3.5 damage around the locust (REP+ 1000.127.1 ring, radius 46.62)
+        sfx:Play(SoundEffect.SOUND_LARYNX_SCREAM_LO, 0.8, 2, false, 2.5)
+        g:ShakeScreen(8)
+        for _, o in ipairs(Isaac.FindInRadius(f.Position, 46.62, EntityPartition.ENEMY)) do
+          if o:IsVulnerableEnemy() then o:TakeDamage(3.5, 0, EntityRef(f), 0) end
+        end
+      end
+      if lf & 256 ~= 0 then  -- Maw of the Void ring on the locust, half size, 0.1x damage
+        local l = Isaac.Spawn(7, 1, 3, f.Position, Vector.Zero, pl):ToLaser()
+        if l then
+          l.Parent = f; l.Radius = 33; l.Timeout = 60
+          l.CollisionDamage = pl.Damage * 0.1
+          l.SpriteScale = Vector(0.5, 0.5)
+        end
+      end
+      if lf & 0x400 ~= 0 then g:Fart(f.Position, 15, f, 0.4, 0, Color(1, 1, 1, 1)) end
+      if lf & 0x800 ~= 0 then g:ButterBeanFart(f.Position, 40, pl, true, true) end
+      if lf & 0x1000 ~= 0 then  -- brimstone along the locust's main axis, 1.5x damage
+        local v = f.Velocity
+        local ang = math.abs(v.X) > math.abs(v.Y) and (v.X < 0 and 180 or 0) or (v.Y < 0 and 270 or 90)
+        local l = EntityLaser.ShootAngle(1, f.Position, ang, 13, Vector.Zero, f)
+        if l then l.CollisionDamage = amt * 1.5 end
+      end
+      for _, b in ipairs(CREEPS) do
+        if lf & b ~= 0 then
+          local c = Isaac.Spawn(1000, EffectVariant.PLAYER_CREEP_GREEN, 0, pos, Vector.Zero, pl)
+          c.SpriteScale = c.SpriteScale * 0.4
+          local k = CREEP_COLOR[b]
+          if k then c.Color = Color(k[1], k[2], k[3], k[4], k[5], k[6], k[7]) end
+          c:Update()
+          break
+        end
+      end
+      if lf & 0x20000 ~= 0 then
+        local p = Isaac.Spawn(1000, 93, 0, f.Position, Vector.Zero, f):ToEffect()
+        if p then p.Timeout = 45; p.LifeSpan = 45 end
+      end
+      if fx then fx(pl, e, f) end
+    end
+    local locust_fx = function(f, e, amt)
+      local r = f:GetData().rp_lrow
+      if not r or not (r.lf or r.lf2) then return end
+      local rng = f:GetDropRNG()
+      local lf = r.lf or 0
+      if r.lf2 and rng:RandomFloat() < (r.pc or 1) then lf = lf | r.lf2 end
+      local fx
+      if lf & 2 ~= 0 then
+        local k = rng:RandomInt(22) + 1
+        if k <= 17 then fx = RAND_TEAR[k] or nil
+        elseif k == 18 then lf = lf | 1
+        elseif k == 19 then lf = lf | 0x400
+        elseif k == 20 then lf = lf | 0x800
+        elseif k == 21 then lf = lf | CREEPS[rng:RandomInt(4) + 1]
+        else lf = lf | 0x20000 end
+      end
+      busy = true
+      local ok, err = pcall(hits, f, e, fx, lf, amt)
+      busy = false
+      if not ok then C.log("isaac-repplus: locust fx: " .. tostring(err)) end
+    end
     Isaac.AddPriorityCallback(mod, ModCallbacks.MC_ENTITY_TAKE_DMG, -10000, function(_, e, amt, flags, src, cd)
       if busy or state ~= "ready" or not src or src.Type ~= 3 or src.Variant ~= 231 then return end
       local f = src.Entity
       if not f then return end
+      if flags & 4 == 0 then locust_fx(f, e, amt) end
       local m = locust_mult(f.SubType)
       if m == 1 then return end
       busy = true
