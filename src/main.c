@@ -228,6 +228,8 @@ typedef struct {
 } ModView;
 
 static int core_repplus(lua_State *l);
+static int core_repplus_ai(lua_State *l);  // repplus_bosses.inc
+static u32 rpb_spawn_var(u32 type, u32 var);  // repplus_bosses.inc
 static int core_rp_proc_item(lua_State *l);
 static int core_rp_je(lua_State *l);
 static int rp_je_action(int trig, void *im, u32 action, u32 ctrl, u32 *pp);
@@ -993,7 +995,7 @@ static bool lua_start(void) {
         return false;
     }
     static const luaL_Reg core[] = {{"log", core_log}, {"error", core_error}, {"readfile", core_readfile},
-                                    {"callback_supported", core_supported}, {"callback_keys", core_callback_keys}, {"repplus", core_repplus},
+                                    {"callback_supported", core_supported}, {"callback_keys", core_callback_keys}, {"repplus", core_repplus}, {"repplus_ai", core_repplus_ai},
                                     {"repplus_proc_item", core_rp_proc_item}, {"repplus_je", core_rp_je}, {NULL, NULL}};
     luaL_newlib(L, core);
     native_open(L);
@@ -1594,7 +1596,7 @@ typedef u64 (*UsePillFn)(void *, int, int, u32);
 static UsePillFn s_use_pill;
 static void rp_pre_use_pill(void *p, int effect, int color);  // repplus_hooks.inc
 static float rp_player_dmg(void *p, float amount, u64 flags, const void *ref);  // repplus_hooks.inc
-static int rp_spawn_extra(uintptr_t lr, void *spawner);  // repplus_hooks.inc
+static int rp_spawn_extra(uintptr_t lr, void *spawner, u32 type, u32 var);  // repplus_hooks.inc
 static u64 hk_use_pill(void *p, int effect, int color, u32 flags) {
     rp_pre_use_pill(p, effect, color);
     u64 r = s_use_pill(p, effect, color, flags);
@@ -1773,8 +1775,9 @@ static void *hk_spawn_ex(void *g, u32 type, u32 var, const Vector2 *pos, const V
             lua_settop(L, top);
         }
     }
+    var = rpb_spawn_var(type, var);
     void *r = s_spawn_ex(g, type, var, pos, vel, spawner, sub, seed, flags);
-    for (int n = rp_spawn_extra((uintptr_t)__builtin_return_address(0), spawner); n > 0; n--) {
+    for (int n = rp_spawn_extra((uintptr_t)__builtin_return_address(0), spawner, type, var); n > 0; n--) {
         seed ^= seed << 13, seed ^= seed >> 17, seed ^= seed << 5;  // next seed for the copy
         s_spawn_ex(g, type, var, pos, vel, spawner, sub, seed ? seed : 1u, flags);
     }

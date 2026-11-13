@@ -162,9 +162,21 @@ static bool rp_it_hurts_allowed(void *p) {
 /* Walnut (108), REP+ Entity_Player::TakeDamage 0x773358: when it breaks, each of its drops (trinket, heart,
  * key, coin) comes multiplier times instead of once (Switch Game::SpawnEx returns to the four LRs below,
  * spawner = the player; copies are made in hk_spawn_ex, main.c). */
-static int rp_spawn_extra(uintptr_t lr, void *spawner) {
-    if (!RP.on || !spawner || !RP.mult) return 0;
+static int rp_pm_trinket_mult(int id);
+static int rp_spawn_extra(uintptr_t lr, void *spawner, u32 type, u32 var) {
+    if (!RP.on || !RP.mult) return 0;
     uintptr_t o = lr - RP.base;
+    /* Golden Poker Chip (76) or Poker Chip + Mom's Box: REP+ Entity_Slot::Update pays its pickups through
+     * one helper (0x665a30) with a count of min(GetTrinketMultiplier(76), 3) (0x65f0c1) where 1.7.9b spawns
+     * one: hearts, coins, keys, bombs, pills, batteries, cards (5.10/20/30/40/70/90/300). Switch: Game::SpawnEx
+     * returns inside Entity_Slot::Update 0x32905c..0x32e5c0. */
+    if (type == 5 && o >= 0x32905cu && o < 0x32e5c0u &&
+        (var == 10 || var == 20 || var == 30 || var == 40 || var == 70 || var == 90 || var == 300)) {
+        int m = rp_pm_trinket_mult(76);
+        if (m > 3) m = 3;
+        return m > 1 ? m - 1 : 0;
+    }
+    if (!spawner) return 0;
     if (o != 0x2a3ac0u && o != 0x2a3b14u && o != 0x2a3b68u && o != 0x2a3bc4u) return 0;
     if (ENT_I32(spawner, kEnt_Type) != 1) return 0;
     int m = RP.mult(spawner, 108);

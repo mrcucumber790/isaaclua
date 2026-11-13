@@ -394,7 +394,11 @@ local function LoadMod(dir, name, all_mods_path)
   -- a mod with only resources/ (no main.lua) is fine, as on PC
   if not chunk and tostring(err):find("^cannot open") then package.path = all_mods_path ~= "" and all_mods_path or own; current_mod_dir = nil; return false end
   local ok = chunk ~= nil
+  -- isaaclua.ini pc_screen: a mod that reads the screen size while it loads sees 480x270, as in its callbacks
+  local pc = chunk and core.pc_screen and core.pc_screen() and not dir:find("isaac%-repplus/$")
+  if pc then core.ui_scale("pc") end
   if chunk then ok, err = xpcall(chunk, traceback) end
+  if pc then core.ui_scale(1) end
   package.path = all_mods_path ~= "" and all_mods_path or own  -- require() from callbacks later
   current_mod_dir = nil
   if not ok then core.error(name .. ": " .. tostring(err)) end

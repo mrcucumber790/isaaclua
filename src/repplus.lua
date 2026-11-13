@@ -7,7 +7,7 @@
 -- repplus_data.lua (tools/gen_data.py), read once and dropped. Turning the mod off in the Mods menu
 -- turns all of this off. Full change list and status: isaac-repplus/CHANGES.md.
 (function()
-  local VERSION = "0.6.110"
+  local VERSION = "0.6.111"
   REPPLUS_VERSION = VERSION
   local DIR, NAME = "rom:/mods/isaac-repplus/", "isaac-repplus"
   local LAST_VANILLA = 732
@@ -353,6 +353,56 @@
   end)
   -- Plan C (475), REP+ UseActiveItem 0x5be295: the death comes after 300 frames in Delirium's room (boss 70)
   -- and 345 in Mother's (88) instead of 90 (Switch Player+0x1d04, set to 90 by UseActiveItem 0x31087c)
+  -- Poker Chip (76), Repentance+ (wiki; the exe's code for it is not found yet): an item of quality 0-2 that
+  -- comes out of a chest is chosen again with quality + 1, from the Golden Chest pool, else the Treasure Room
+  -- pool; not in the Chest / Dark Room. The machine odds and golden payouts are native (repplus_bosses.inc).
+  do
+    local CHEST = {[50] = true, [51] = true, [52] = true, [53] = true, [54] = true, [55] = true, [56] = true,
+      [57] = true, [58] = true, [60] = true, [360] = true}
+    local was_chest = {}  -- GetPtrHash(chest) -> {position, frame} of its last update, this room
+    local morphing = false
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_PICKUP_UPDATE, -10000, function(_, e)
+      if CHEST[e.Variant] then was_chest[GetPtrHash(e)] = {e.Position, Game():GetFrameCount()} end
+    end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_NEW_ROOM, -10000, function() was_chest = {} end)
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_PICKUP_INIT, -10000, function(_, e)
+      if state ~= "ready" or morphing or e.Variant ~= 100 or e.SubType <= 0 then return end
+      -- an opened chest is removed and the item spawned where it stood
+      local from
+      local now = Game():GetFrameCount()
+      for h, c in pairs(was_chest) do
+        if now - c[2] > 2 then was_chest[h] = nil
+        elseif c[1]:Distance(e.Position) < 4 then from = h end
+      end
+      if not from then return end
+      was_chest[from] = nil
+      if Game():GetLevel():GetStage() == 11 then return end
+      local has = false
+      for i = 0, Game():GetNumPlayers() - 1 do
+        if Isaac.GetPlayer(i):HasTrinket(76) then has = true break end
+      end
+      if not has then return end
+      local cfg = Isaac.GetItemConfig()
+      local it = cfg:GetCollectible(e.SubType)
+      if not it or it.Quality > 2 then return end
+      local want, pool, rng = it.Quality + 1, Game():GetItemPool(), RNG()
+      rng:SetSeed(e.InitSeed ~= 0 and e.InitSeed or 1, 35)
+      for _, pt in ipairs({ItemPoolType.POOL_GOLDEN_CHEST, ItemPoolType.POOL_TREASURE}) do
+        for _ = 1, 40 do
+          local id = pool:GetCollectible(pt, false, rng:Next())
+          local c2 = id and id > 0 and cfg:GetCollectible(id)
+          if c2 and c2.Quality == want then
+            pool:RemoveCollectible(id)
+            morphing = true
+            e:ToPickup():Morph(5, 100, id, true, true, true)
+            morphing = false
+            return
+          end
+        end
+      end
+    end, 100)
+  end
+
   -- Ultra Greed's coins (293.0-3) devolve into a penny with D10 (REP+ 1.9.7.4: entities2.xml gives each a
   -- <devolve id="5.20.0"/>; 1.7.9b has no devolve entry, so Game::DevolveEnemy skips them).
   Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_ITEM, -10000, function(_, item)

@@ -62,6 +62,20 @@ fi
 T=build/pkg; C=$T/atmosphere/contents/010021C000B6A000
 rm -rf $T && mkdir -p $C/exefs $C/romfs/mods
 cp out/subsdk8 $C/exefs/subsdk8
+if [ "$1" != full ] && [ "$1" != test ]; then
+    # the release (Egor, 2026-11-12: "не оставляй моды в архиве, только поддержку модов"): the loader, its
+    # settings and a note where mods go; the same zip is published on github.com/mrcucumber790/isaaclua
+    cp example/isaaclua.ini $C/romfs/isaaclua.ini
+    printf 'Put PC mods here, one folder per mod (as in the PC mods folder): mods/<mod folder>/main.lua\nКлади сюда ПК-моды, каждый в своей папке: mods/<папка мода>/main.lua\n' > $C/romfs/mods/PUT_MODS_HERE.txt
+    V=$(sed -n 's/^#define ISAACLUA_VERSION "\(.*\)"/\1/p' src/version.h)
+    Z=release/isaaclua_v$V.zip
+    mkdir -p release && for z in release/isaaclua_v*.zip; do case $z in *-debug.zip|*-remote.zip|*-full.zip) ;; *) rm -f "$z" ;; esac; done
+    cp README.md $T/README.md
+    (cd $T && python3 -I -m zipfile -c ../../$Z atmosphere README.md)
+    python3 -I -m zipfile -l $Z
+    exit 0
+fi
+# "full": the loader with the ported mods below (release/isaaclua_v<version>-full.zip)
 # real PC mods that run unmodified (test/mods/<name>/ORIGIN.txt says where each comes from)
 for m in regret; do mkdir -p $C/romfs/mods/$m && cp test/mods/$m/main.lua test/mods/$m/metadata.xml $C/romfs/mods/$m/; done
 # whole mods, as downloaded (test/mods_eid/<name>/ORIGIN.txt)
@@ -81,9 +95,8 @@ if [ "$1" = test ] && [ -d test/mods_cat ]; then
     for d in test/mods_cat/*/; do m=$(basename "$d"); cp -r "$d" "$C/romfs/mods/$m"; rm -f "$C/romfs/mods/$m/ORIGIN.txt"; done
 fi
 cp README.md $T/README.md
-cp README.en.md $T/README.en.md
 V=$(sed -n 's/^#define ISAACLUA_VERSION "\(.*\)"/\1/p' src/version.h)
-if [ "$1" = test ]; then D=release-test Z=release-test/isaaclua_v$V-test.zip; else D=release Z=release/isaaclua_v$V.zip; fi
-mkdir -p $D && for z in $D/isaaclua_v*.zip; do case $z in *-debug.zip|*-remote.zip) ;; *) rm -f "$z" ;; esac; done
-(cd $T && python3 -I -m zipfile -c ../../$Z atmosphere README.md README.en.md)
+if [ "$1" = test ]; then D=release-test Z=release-test/isaaclua_v$V-test.zip; else D=release Z=release/isaaclua_v$V-full.zip; fi
+mkdir -p $D && rm -f $D/isaaclua_v*-full.zip $D/isaaclua_v*-test.zip
+(cd $T && python3 -I -m zipfile -c ../../$Z atmosphere README.md)
 python3 -I -m zipfile -l $Z
