@@ -7,7 +7,7 @@ adds Lua 5.3 (the same version as on PC) to the game and rebuilds the PC modding
 game's own code. PC mods (`main.lua`, `RegisterMod`, `mod:AddCallback(...)`, `resources/`, `content/`)
 are loaded as they are, without changing their files.
 
-Current version: **1.0.5**.
+Current version: **1.0.6**.
 
 ## What works
 
@@ -38,40 +38,64 @@ other build of the game the plugin turns itself off.
 2. Copy the `atmosphere/` folder from the zip to the root of the SD card.
 3. Put PC mods into `sd:/atmosphere/contents/010021C000B6A000/romfs/mods/`, one folder per mod, exactly
    as in the PC `mods` folder. You can take them from your PC game or from the Steam Workshop.
-4. Start the game. In a run, a line at the top of the screen shows `isaaclua v1.0.5 (Lua 5.3.6), N mod(s) loaded`.
+4. Start the game. In a run, a line at the top of the screen shows `isaaclua v1.0.6 (Lua 5.3.6), N mod(s) loaded`.
 
 To turn a mod off, put an empty `disable.it` file in its folder, or use the Mods menu.
 
 ## Repentance+ build
 
-Releases will have two files (the Repentance+ file is not published yet):
+Every release has two files:
 
 - `isaaclua_v<version>.zip`: the mod loader only.
-- `isaaclua_v<version>-repplus.zip`: the same loader plus the `isaac-repplus` mod (now **0.6.113**). It brings
-  the changes of Repentance+ (the newest PC update) to the Switch game. It is not a port of the PC
-  executable: it is a mod made from the REP+ game data and from the REP+ program code, checked on a Switch.
+- `isaaclua_v<version>-repplus.zip`: the same loader plus the `isaac-repplus` mod, which brings the changes
+  of Repentance+ (the newest PC update) to the Switch game. While it is on, mods see `REPENTANCE_PLUS = true`
+  and use their REP+ code paths, as on PC.
 
-Install it the same way. To go back to plain Repentance, turn `isaac-repplus` off in the Mods menu and
-restart the game. While it is on, mods see `REPENTANCE_PLUS = true` and use their REP+ code paths.
+The game still runs natively; this is not the PC game. The changes are taken from the Repentance+ PC
+executable and data files and checked against the wiki. The full list, with what is done, is
+`REPPLUS_CHANGES.ru.md` in the zip (in Russian).
 
-What is done:
+### Installing the Repentance+ build
 
-- Item, trinket, card, pill and character data from the REP+ files: quality, charges, prices, tags,
-  transformations and all item pools.
-- Almost all REP+ changes to items, trinkets, pills, bosses and enemies, including those from the
-  1.9.7.4–1.9.7.17 patch notes.
-- Final boss armor, REP+ boss animations, about 2/3 of the new sounds, the Lil Portal bedroom.
-- The "My Stuff" page on the pause screen, with REP+ item descriptions.
-- The REP+ Lua API additions (`FontRenderSettings`, `Font:DrawString` with settings, `KillWithSource` and others).
+The zip has no files of the game itself (new sounds, sprites, animations and a font). You take them from
+your own PC copy of Repentance+:
 
-What is not done:
+1. On a PC with Repentance+, run the game's own extractor:
+   `<Steam>/steamapps/common/The Binding of Isaac Rebirth/tools/ResourceExtractor/ResourceExtractor.exe`.
+   It writes the game's files to `<game folder>/extracted_resources`.
+2. Unpack the zip and run (Python 3; Pillow is needed for the My Stuff font: `pip install pillow`):
+   `python3 get_assets/get_assets.py <game folder>/extracted_resources atmosphere/contents/010021C000B6A000/romfs/mods/isaac-repplus`
+   It copies about 230 files into the mod and checks each one against the version the mod was tested with.
+   The script runs on any device with Python, including an iPhone or iPad (a-Shell), once the extracted
+   files are copied there.
+3. Copy `atmosphere/` to the root of the SD card.
 
-- REP+ visual changes: new heart art, boss intro screens, Deeds, the new HUD, the compact pause menu.
-- Mega Fatty and Camillo Jr. behaviour changes, and some small bug fixes from the patch notes.
-- About 1/3 of the new sounds.
+Without step 2 the REP+ changes still work, but the new sprites, sounds and the My Stuff page font are missing (not checked on a Switch yet).
+To go back to plain Repentance, turn `isaac-repplus` off in the Mods menu and restart the game.
+
+### Done
+
+- Item, trinket, card, pill and character data from Repentance+: quality, charges, prices, tags,
+  transformations, all item pools.
+- Almost all item, trinket, boss and enemy changes from the Repentance+ executable and from the
+  1.9.7.4–1.9.7.17 patch notes (for example Abyss locusts by item quality, Poker Chip, Boss Rush waves,
+  The Beast, Hush, Delirium, Mega Fatty, Lil Portal, Modeling Clay).
+- Final boss armor, REP+ boss animations, about 2/3 of the new sounds.
+- The My Stuff pause page with item descriptions and pool icons.
+- The Repentance+ Lua API additions for mods (`REPENTANCE_PLUS`, `FontRenderSettings`, `Font:DrawString`
+  with settings, `...WithSource` functions).
+- Room layouts: the Switch game already has the Repentance+ rooms.
+
+### Not done
+
+- Repentance+ cosmetics: redrawn hearts, boss intro screens, Deeds, the new HUD, the compact pause menu.
 - Online play.
-
-The full list of REP+ changes with their status is `REPPLUS_CHANGES.ru.md` in the zip (in Russian).
+- Special effects of some Abyss locusts (fire, slow, petrify and others); their damage and on-hit effects work.
+- Camillo Jr. changes.
+- Small bug fixes from the patch notes: Epiphora when changing direction, Brimstone + Gello, Parasite +
+  Tech X, Monstro's Lung, Echo Chamber after continuing a run, the Lemegeton limit, Dead Bird, Glitched
+  Crown and chests.
+- About a third of the new sounds.
 
 ## Settings
 

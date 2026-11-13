@@ -42,6 +42,29 @@ if [ "$1" = debug ]; then
     python3 -I -m zipfile -l $Z
     exit 0
 fi
+if [ "$1" = repplus-public ]; then
+    # the public Repentance+ zip for GitHub (Egor, 2026-11-13: "код + скрипт ассетов"): the loader zip plus the
+    # isaac-repplus mod WITHOUT the game's own files (sounds, sprites, anm2, font). tools/repplus/get_assets.py
+    # takes them from the user's own extracted REP+ (assets.tsv lists them) -> release/isaaclua_v<v>-repplus.zip
+    V=$(sed -n 's/^#define ISAACLUA_VERSION "\(.*\)"/\1/p' src/version.h)
+    T=build/pkg-repplus-public; C=$T/atmosphere/contents/010021C000B6A000; MD=$C/romfs/mods/isaac-repplus
+    rm -rf $T && mkdir -p $C/exefs $C/romfs/mods $T/get_assets
+    cp out/subsdk8 $C/exefs/subsdk8
+    cp -r test/mods_repplus/isaac-repplus $MD
+    grep -v '^#' tools/repplus/assets.tsv | cut -f2 | while IFS= read -r f; do rm -f "$MD/$f"; done
+    rm -f $MD/resources/font/repplus/mystuff12.fnt $MD/resources/font/repplus/mystuff12_0.png
+    find $MD -type d -empty -delete
+    cp example/isaaclua.ini $C/romfs/isaaclua.ini
+    printf 'Put PC mods here, one folder per mod (as in the PC mods folder): mods/<mod folder>/main.lua\nКлади сюда ПК-моды, каждый в своей папке: mods/<папка мода>/main.lua\n' > $C/romfs/mods/PUT_MODS_HERE.txt
+    cp tools/repplus/get_assets.py tools/repplus/crop_font.py tools/repplus/assets.tsv $T/get_assets/
+    cp README.md $T/README.md
+    cp docs/REPPLUS_ALL_CHANGES.md $T/REPPLUS_CHANGES.ru.md
+    Z=release/isaaclua_v$V-repplus.zip
+    mkdir -p release && rm -f release/isaaclua_v*-repplus.zip
+    (cd $T && python3 -I -m zipfile -c ../../$Z atmosphere get_assets README.md REPPLUS_CHANGES.ru.md)
+    python3 -I -m zipfile -l $Z | grep -v -c "/$" ; python3 -I -m zipfile -l $Z | grep -i "\.wav\|\.png\|\.fnt" 
+    exit 0
+fi
 if [ "$1" = repplus ]; then
     # only Repentance+ (Egor, 2026-11-05): the release subsdk8 + the isaac-repplus mod, no other mods
     # -> release/repplus_v<REP+ version>.zip (README-REPPLUS.md = docs/README-REPPLUS.md, the change list too)

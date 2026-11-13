@@ -1903,17 +1903,21 @@ enum { kActConfirm = 14, kActBack = 15, kActUp = 19, kActDown = 20, kActModsTogg
 #define kMenuMods_Dirty 360
 #define kManager_MenuFont 0x117120  /* the font Menu_Mods writes with */
 #define kModEntry_On 312        /* u8; the folder name is the std::string at +0 */
-/* where MODS goes on the main menu's paper (480x270 units, from photos of the Switch screen) */
-#define kModsTextX 231.0f       /* centre: the word starts under OPTIONS, as the list slants (HW photo) */
-#define kModsTextY 192.0f       /* top of the text box (the letters start ~9 lower), under the closed-up rows */
+/* Without REP+ the main menu has PC Repentance's six rows (PC GameMenu.anm2): NEW RUN, CONTINUE, CHALLENGES,
+ * MODS, STATS, OPTIONS. The Switch build spread its five rows over the paper: they go back to PC's places, MODS
+ * is made of the other entries' letters (PC's Item6 art was much bolder, Egor 2026-11-13) and the cursor is PC's at its six places, both drawn from
+ * gfx/ui/main menu/isaaclua_menu.anm2 (ours, on the game's own GameMenu.png; written to the save data, see
+ * menu_anm2_write). The game's cursor is hidden: moving it by an offset while it stayed on OPTIONS made it jump,
+ * and the menu font MODS did not look like the drawn entries (HW 2026-11-13). */
+static const float kPcItemD[5][2] = {{-2, -5}, {-3, -9}, {-5, -16}, {1, 10}, {0, 5}};  // PC Item1-5 less Switch's
+static const float kPcCursor[6][2] = {{168, 68}, {171, 94}, {172, 122}, {176, 152}, {182, 181}, {187, 211}};
+#define kPcModsX 0.0f           /* our "Mods" frames are placed on the paper itself */
+#define kPcModsY 0.0f
+#define kModsRow 3
+#define kModsTextX 225.0f       /* the menu-font fallback while the sprite can't be drawn: centre, top */
+#define kModsTextY 127.0f
 #define kModsScale 1.0f
-#define kModsRowDy0 (-4.0f)     /* CONTINUE, CHALLENGES, STATS, OPTIONS move up this much without REP+ */
-#define kModsRowDy1 (-8.0f)
-#define kModsRowDy2 (-14.0f)
-#define kModsRowDy3 (-20.0f)
-#define kModsSlant 0.05f        /* rise per unit to the right, as OPTIONS */
-#define kModsArrowDx 2.0f      /* the cursor's move from OPTIONS */
-#define kModsArrowDy 20.0f      /* from the moved OPTIONS row */
+#define kModsSlant 0.05f        /* rise per unit to the right, as the entries above */
 typedef void (*InitAtFn)(void *, const float *);
 static VoidFn s_mm_update, s_cc_render, s_game_menu_update, s_game_menu_render;
 static VoidFn s_mods_ctor, s_mods_update, s_mods_render;
@@ -1973,9 +1977,43 @@ static void mods_off_save(void) {
     if (!isaaclua_save_store(kModsOffFile, out, n)) overlay_add("Mods: could not save the switches", OVERLAY_WARN);
     free(out);
 }
+/* the anm2 the main menu's MODS and cursor are drawn from (see hk_game_menu_render): no files of our own in romfs,
+ * so it is written to the save data once it is mounted and found there as gfx/ui/main menu/isaaclua_menu.anm2
+ * (modfs_set_menu_anm2), where its "GameMenu.png" is the game's own sheet */
+static const char kMenuAnm2[] =
+    "<AnimatedActor>\n"
+    "<Info CreatedBy=\"isaaclua: MODS put together from letters of the game's own entries (M = W upside down, D = I + half an O), and the cursor\" Fps=\"30\" Version=\"1\"/>\n"
+    "<Content><Spritesheets><Spritesheet Path=\"GameMenu.png\" Id=\"0\"/></Spritesheets><Layers>\n"
+    "<Layer Name=\"L0\" Id=\"0\" SpritesheetId=\"0\"/>\n"
+    "<Layer Name=\"L1\" Id=\"1\" SpritesheetId=\"0\"/>\n"
+    "<Layer Name=\"L2\" Id=\"2\" SpritesheetId=\"0\"/>\n"
+    "<Layer Name=\"L3\" Id=\"3\" SpritesheetId=\"0\"/>\n"
+    "<Layer Name=\"L4\" Id=\"4\" SpritesheetId=\"0\"/>\n"
+    "</Layers><Nulls/><Events/></Content>\n"
+    "<Animations DefaultAnimation=\"Mods\">\n"
+    "<Animation Name=\"Mods\" FrameNum=\"1\" Loop=\"true\"><RootAnimation><Frame XPosition=\"0\" YPosition=\"0\" XScale=\"100\" YScale=\"100\" Delay=\"1\" Visible=\"true\" RedTint=\"255\" GreenTint=\"255\" BlueTint=\"255\" AlphaTint=\"255\" RedOffset=\"0\" GreenOffset=\"0\" BlueOffset=\"0\" Rotation=\"0\" Interpolated=\"false\"/></RootAnimation><LayerAnimations>\n"
+    "<LayerAnimation LayerId=\"0\" Visible=\"true\"><Frame XPosition=\"205\" YPosition=\"146\" XPivot=\"8\" YPivot=\"10\" XCrop=\"65\" YCrop=\"303\" Width=\"16\" Height=\"20\" XScale=\"100\" YScale=\"-100\" Delay=\"1\" Visible=\"true\" RedTint=\"255\" GreenTint=\"255\" BlueTint=\"255\" AlphaTint=\"255\" RedOffset=\"0\" GreenOffset=\"0\" BlueOffset=\"0\" Rotation=\"0\" Interpolated=\"false\"/></LayerAnimation>\n"
+    "<LayerAnimation LayerId=\"1\" Visible=\"true\"><Frame XPosition=\"222\" YPosition=\"144\" XPivot=\"8\" YPivot=\"9\" XCrop=\"39\" YCrop=\"503\" Width=\"16\" Height=\"18\" XScale=\"100\" YScale=\"100\" Delay=\"1\" Visible=\"true\" RedTint=\"255\" GreenTint=\"255\" BlueTint=\"255\" AlphaTint=\"255\" RedOffset=\"0\" GreenOffset=\"0\" BlueOffset=\"0\" Rotation=\"0\" Interpolated=\"false\"/></LayerAnimation>\n"
+    "<LayerAnimation LayerId=\"2\" Visible=\"true\"><Frame XPosition=\"233\" YPosition=\"143\" XPivot=\"3\" YPivot=\"7\" XCrop=\"92\" YCrop=\"354\" Width=\"6\" Height=\"15\" XScale=\"100\" YScale=\"100\" Delay=\"1\" Visible=\"true\" RedTint=\"255\" GreenTint=\"255\" BlueTint=\"255\" AlphaTint=\"255\" RedOffset=\"0\" GreenOffset=\"0\" BlueOffset=\"0\" Rotation=\"0\" Interpolated=\"false\"/></LayerAnimation>\n"
+    "<LayerAnimation LayerId=\"3\" Visible=\"true\"><Frame XPosition=\"238\" YPosition=\"143\" XPivot=\"5\" YPivot=\"9\" XCrop=\"45\" YCrop=\"503\" Width=\"10\" Height=\"18\" XScale=\"100\" YScale=\"100\" Delay=\"1\" Visible=\"true\" RedTint=\"255\" GreenTint=\"255\" BlueTint=\"255\" AlphaTint=\"255\" RedOffset=\"0\" GreenOffset=\"0\" BlueOffset=\"0\" Rotation=\"0\" Interpolated=\"false\"/></LayerAnimation>\n"
+    "<LayerAnimation LayerId=\"4\" Visible=\"true\"><Frame XPosition=\"251\" YPosition=\"141\" XPivot=\"7\" YPivot=\"9\" XCrop=\"99\" YCrop=\"443\" Width=\"15\" Height=\"19\" XScale=\"100\" YScale=\"100\" Delay=\"1\" Visible=\"true\" RedTint=\"255\" GreenTint=\"255\" BlueTint=\"255\" AlphaTint=\"255\" RedOffset=\"0\" GreenOffset=\"0\" BlueOffset=\"0\" Rotation=\"0\" Interpolated=\"false\"/></LayerAnimation>\n"
+    "</LayerAnimations><NullAnimations/><Triggers/></Animation>\n"
+    "<Animation Name=\"Cursor\" FrameNum=\"1\" Loop=\"true\"><RootAnimation><Frame XPosition=\"0\" YPosition=\"0\" XScale=\"100\" YScale=\"100\" Delay=\"1\" Visible=\"true\" RedTint=\"255\" GreenTint=\"255\" BlueTint=\"255\" AlphaTint=\"255\" RedOffset=\"0\" GreenOffset=\"0\" BlueOffset=\"0\" Rotation=\"0\" Interpolated=\"false\"/></RootAnimation><LayerAnimations>\n"
+    "<LayerAnimation LayerId=\"0\" Visible=\"true\"><Frame XPosition=\"0\" YPosition=\"0\" XPivot=\"16\" YPivot=\"16\" XCrop=\"0\" YCrop=\"304\" Width=\"32\" Height=\"32\" XScale=\"100\" YScale=\"100\" Delay=\"1\" Visible=\"true\" RedTint=\"255\" GreenTint=\"255\" BlueTint=\"255\" AlphaTint=\"255\" RedOffset=\"0\" GreenOffset=\"0\" BlueOffset=\"0\" Rotation=\"0\" Interpolated=\"false\"/></LayerAnimation>\n"
+    "</LayerAnimations><NullAnimations/><Triggers/></Animation>\n"
+    "</Animations>\n"
+    "</AnimatedActor>\n";
+static void menu_anm2_write(void) {
+    static const char file[] = "menu.anm2";
+    char *old = isaaclua_save_load(file);
+    bool same = old && strcmp(old, kMenuAnm2) == 0;
+    free(old);
+    if (same || isaaclua_save_store(file, kMenuAnm2, sizeof kMenuAnm2 - 1)) modfs_set_menu_anm2("sdmc:/isaaclua/menu.anm2");
+}
 static void mods_off_apply(void) {  // once the save data is mounted (a user is picked)
     if (s_mods_off_applied || !nnfs_IsMounted("sdmc")) return;
     s_mods_off_applied = true;
+    menu_anm2_write();
     char *off = isaaclua_save_load(kModsOffFile);
     u8 **e, **b = mod_entries(&e);
     for (u8 **i = b; off && b && i < e; i++)
@@ -2001,6 +2039,7 @@ static void menu_sound(int id) {
 #define kMM_Controller 0x34   /* i32: the controller the menus read (Menu_Game::Render passes it on) */
 typedef struct { float x, y; } Vec2Arg;
 static void (*s_anm_set_layer_frame)(void *, int, int);
+static void (*s_anm_render_layer)(void *, int, const Vec2Arg *, const Vec2Arg *, const Vec2Arg *);
 static void (*s_render_button_icon)(void *, int, int, int, Vec2Arg, bool);
 static char *s_mods_all_off;  // names switched off by X, to switch back on
 static bool mods_any_on(u8 **b, u8 **e) {
@@ -2042,14 +2081,27 @@ static void mods_widget_text(u8 **b, u8 **e) {
 static void mods_render(void) {
     u8 *mm = s_g_menu_manager ? (u8 *)*s_g_menu_manager : NULL;
     u8 *tab = s_render_button_icon && s_anm_get_layer ? s_anm_get_layer(s_mods_menu + kModsAnm, kModsLayerTab) : NULL;
-    u8 vis = tab ? tab[0x7c] : 0;
+    /* the "enable / disable" text: Menu_Mods::Render puts every layer back on the animation's frame 0 ("enable")
+     * before drawing (HW 1.0.6: "enable" with mods on), so the layer is hidden there and drawn here on its own */
+    u8 *txt = s_anm_render_layer && s_anm_set_layer_frame && s_anm_get_layer && G.anm_play && mm
+              ? s_anm_get_layer(s_mods_menu + kModsAnm, kModsLayerText) : NULL;
+    u8 vis = tab ? tab[0x7c] : 0, tvis = txt ? txt[0x7c] : 0;
     if (tab) tab[0x7c] = 0;
+    if (txt) txt[0x7c] = 0;
     s_mods_render(s_mods_menu);
+    const float *cam = mm ? (const float *)(mm + kMM_Camera) : NULL, *pos = (const float *)(s_mods_menu + kMenu_Pos);
+    if (txt) {
+        txt[0x7c] = tvis;
+        u8 **we, **wb = mod_entries(&we);
+        if (G.anm_play) G.anm_play(s_mods_menu + kModsAnm, "Main", false);  // Render ends on "Bottom"/"Cursor"
+        mods_widget_text(wb, we);
+        Vec2Arg at = {cam[0] + pos[0] + kModsMainX, cam[1] + pos[1]}, zero = {0, 0};
+        s_anm_render_layer(s_mods_menu + kModsAnm, kModsLayerText, &at, &zero, &zero);
+    }
     if (!tab) return;
     tab[0x7c] = vis;
     u8 *mgr = manager_ptr();
     if (!mm || !mgr) return;
-    const float *cam = (const float *)(mm + kMM_Camera), *pos = (const float *)(s_mods_menu + kMenu_Pos);
     Vec2Arg at = {cam[0] + pos[0] + kModsMainX + kModsButtonX, cam[1] + pos[1] + kModsButtonY};
     s_render_button_icon(mgr, *(int *)(mm + kMM_Controller), kActModsToggle, 0, at, true);
 }
@@ -2074,7 +2126,9 @@ static void hk_mm_update(void *mm) {
     if (!was_in_mods) return;
     /* the switch is ours (the game's writes disable.it next to the mod), the global one stays on */
     u8 **cur = *(u8 ***)(s_mods_menu + kMenuMods_Cursor);
-    if (triggered(kActConfirm) && cur && cur >= b && cur < e) {
+    /* not on the frame it opened: the A that picked MODS on the main menu is still "triggered" here and switched
+     * the first mod off (HW 2026-11-13, StageAPI) */
+    if (!just_opened && triggered(kActConfirm) && cur && cur >= b && cur < e) {
         (*cur)[kModEntry_On] ^= 1;
         s_mods_menu[kMenuMods_Dirty] = 1;
         mod_switched(entry_name(*cur), !(*cur)[kModEntry_On]);
@@ -2156,8 +2210,9 @@ static void hk_game_menu_update(void *menu) {
         if (s_mods_item) *cursor = 2;
         return;
     }
-    /* without REP+: MODS is a sixth row under OPTIONS. Up/down are ours here too, as in the REP+ branch: the
-     * game wrapped OPTIONS -> NEW RUN first and we set the cursor back, so the arrow jumped (HW 2026-11-08) */
+    /* without REP+: MODS is the fourth row, as on PC (rows 0 NEW RUN, 1 CONTINUE, 2 CHALLENGES, 3 MODS, 4-5 the
+     * game's 3-4). Up/down are ours, as in the REP+ branch: the game's own wrap and repeat moved the arrow away
+     * from ours (HW 2026-11-08) */
     static int held;
     bool down = s_action_pressed && s_action_pressed(s_input_mgr, kActDown, (u32)-1, NULL);
     bool up = s_action_pressed && s_action_pressed(s_input_mgr, kActUp, (u32)-1, NULL);
@@ -2166,13 +2221,13 @@ static void hk_game_menu_update(void *menu) {
         held++;
         if (held == 1 || (held > 30 && held % 8 == 0)) step = down ? 1 : -1;
     } else held = 0;
-    int row = s_mods_item ? 5 : *cursor;
+    int row = s_mods_item ? kModsRow : *cursor < kModsRow ? *cursor : *cursor + 1;
     if (step) {
         row = (row + step + 6) % 6;
         menu_sound(282);
     }
-    s_mods_item = row == 5;
-    *cursor = row == 5 ? 4 : row;
+    s_mods_item = row == kModsRow;
+    *cursor = row < kModsRow ? row : row == kModsRow ? kModsRow : row - 1;  // on MODS the game's sits on STATS
     if (s_mods_item) {
         if (triggered(kActConfirm)) {
             menu_sound(283);
@@ -2184,7 +2239,7 @@ static void hk_game_menu_update(void *menu) {
         s_block_actions = 1u << kActUp | 1u << kActDown;
     s_game_menu_update(menu);
     s_block_actions = 0;
-    if (s_mods_item) *cursor = 4;
+    if (s_mods_item) *cursor = kModsRow;
 }
 static void mods_widget(void *menu, u8 *mm) {
     s_mods_widget = false;
@@ -2205,26 +2260,42 @@ static void mods_widget(void *menu, u8 *mm) {
     }
     lua_settop(L, top);
 }
+static bool s_menu_spr_ok;  // last frame drew our MODS and cursor: the game's cursor stays hidden
+static bool menu_item(const char *anim, float x, float y) {
+    int top = lua_gettop(L);
+    lua_getglobal(L, "_isaaclua_menu_item");
+    bool drawn = false;
+    if (lua_isfunction(L, -1)) {
+        lua_pushstring(L, anim), lua_pushnumber(L, x), lua_pushnumber(L, y);
+        drawn = lua_pcall(L, 3, 1, 0) == LUA_OK && lua_toboolean(L, -1);
+    }
+    lua_settop(L, top);
+    return drawn;
+}
 static void hk_game_menu_render(void *menu) {
     u8 *mm = s_g_menu_manager ? (u8 *)*s_g_menu_manager : NULL;
     /* the game's cursor (layer 6, on OPTIONS) is moved down to MODS while that is picked; +72/+76 is the
      * layer's offset, which Menu_Game itself shifts for narrow screens */
     bool rep = s_mods_widget;
     int cur_row = *(int *)((u8 *)menu + kMenuGame_Cursor);
-    /* without REP+: CONTINUE..OPTIONS (layers 2-5) close up so MODS gets a whole row on the paper under OPTIONS
-     * (HW 2026-11-08: a small MODS under the untouched rows overlapped OPTIONS); the cursor goes with its row */
-    static const float kNRowDy[4] = {kModsRowDy0, kModsRowDy1, kModsRowDy2, kModsRowDy3};
+    /* without REP+: the rows at PC's places (layers 1-5), our cursor instead of the game's (layer 6) */
     u8 *cur = !rep && s_anm_get_layer ? s_anm_get_layer((u8 *)menu + kMenuGame_Anm, 6) : NULL;
-    float *off = cur ? (float *)(cur + 72) : NULL, ox = 0, oy = 0;
-    if (off) {
-        ox = off[0], oy = off[1];
-        if (s_mods_item) off[0] += kModsArrowDx, off[1] += kNRowDy[3] + kModsArrowDy;
-        else if (cur_row >= 1 && cur_row <= 4) off[1] += kNRowDy[cur_row - 1];
+    float shift[2] = {0, 0};  // the layers' own offset (+72/+76): Menu_Game moves them for narrow screens
+    u8 cur_vis = cur ? cur[0x7c] : 0;
+    if (cur) {
+        shift[0] = *(float *)(cur + 72), shift[1] = *(float *)(cur + 76);
+        if (s_menu_spr_ok) cur[0x7c] = 0;
+        else {  // the font fallback: the game's cursor (on its frame for its row) moved to PC's place
+            static const float kSwCursor[5][2] = {{169, 72}, {172, 102}, {174, 138}, {180, 169}, {186, 206}};
+            int row = s_mods_item ? kModsRow : cur_row < kModsRow ? cur_row : cur_row + 1, g = s_mods_item ? 3 : cur_row;
+            if (row >= 0 && row < 6 && g >= 0 && g < 5)
+                *(float *)(cur + 72) += kPcCursor[row][0] - kSwCursor[g][0], *(float *)(cur + 76) += kPcCursor[row][1] - kSwCursor[g][1];
+        }
     }
-    float *ny[4] = {NULL, NULL, NULL, NULL};
-    for (int i = 0; !rep && s_anm_get_layer && i < 4; i++) {
-        u8 *l = s_anm_get_layer((u8 *)menu + kMenuGame_Anm, 2 + i);
-        if (l) ny[i] = (float *)(l + 76), ny[i][0] += kNRowDy[i];
+    float *ny[5] = {NULL, NULL, NULL, NULL, NULL};
+    for (int i = 0; !rep && s_anm_get_layer && i < 5; i++) {
+        u8 *l = s_anm_get_layer((u8 *)menu + kMenuGame_Anm, 1 + i);
+        if (l) ny[i] = (float *)(l + 72), ny[i][0] += kPcItemD[i][0], ny[i][1] += kPcItemD[i][1];
     }
     /* REP+: the rows below CONTINUE close up to make room for DAILY RUN and keep OPTIONS on the paper
      * (HW photo: a whole row down put OPTIONS under it); the cursor goes with its row */
@@ -2253,9 +2324,9 @@ static void hk_game_menu_render(void *menu) {
         if (dl[i]) dl[i][0x7c] = dv[i];
     for (int i = 0; i < 4; i++)
         if (iy[i]) iy[i][0] -= idy[i], iy[i][-1] -= idx[i];
-    if (off) off[0] = ox, off[1] = oy;
-    for (int i = 0; i < 4; i++)
-        if (ny[i]) ny[i][0] -= kNRowDy[i];
+    if (cur) cur[0x7c] = cur_vis, *(float *)(cur + 72) = shift[0], *(float *)(cur + 76) = shift[1];
+    for (int i = 0; i < 5; i++)
+        if (ny[i]) ny[i][0] -= kPcItemD[i][0], ny[i][1] -= kPcItemD[i][1];
     mods_widget(menu, mm);
     u8 *mgr = manager_ptr();
     if (!s_mods_menu || !mm || !mgr || !G.draw_utf8 || !G.color_ctor || !G.string_width_utf8) return;
@@ -2275,6 +2346,13 @@ static void hk_game_menu_render(void *menu) {
         }
         lua_settop(L, top);
         if (drawn) return;
+    }
+    if (!rep && L) {  // MODS and the cursor from isaaclua_menu.anm2, the menu font only if that fails
+        int row = s_mods_item ? kModsRow : cur_row < kModsRow ? cur_row : cur_row + 1;
+        float bx = cam[0] + pos[0] + shift[0], by = cam[1] + pos[1] + shift[1];
+        bool ok = menu_item("Mods", bx + kPcModsX, by + kPcModsY);
+        s_menu_spr_ok = ok && cur_vis && row >= 0 && row < 6 && menu_item("Cursor", bx + kPcCursor[row][0], by + kPcCursor[row][1]);
+        if (ok) return;
     }
     const char *word = rep ? "DAILY RUN" : "MODS";
     const float scale = rep ? kDailyScale : kModsScale;
@@ -2299,6 +2377,8 @@ static void install_mods_menu(const ModView *v) {
     s_g_menu_manager = (void **)api_sym("_ZN15IsaacRepentance13g_MenuManagerE");
     s_input_mgr = api_sym("_ZN4KAGE5Input9g_ManagerE");
     s_anm_set_layer_frame = (void (*)(void *, int, int))api_sym("_ZN15IsaacRepentance4ANM213SetLayerFrameEii");
+    s_anm_render_layer = (void (*)(void *, int, const Vec2Arg *, const Vec2Arg *, const Vec2Arg *))api_sym(
+        "_ZN15IsaacRepentance4ANM211RenderLayerEiRKN4KAGE4Math7Vector2ES5_S5_");
     s_render_button_icon = (void (*)(void *, int, int, int, Vec2Arg, bool))api_sym(
         "_ZN15IsaacRepentance7Manager16RenderButtonIconEiiiN4KAGE4Math7Vector2Eb");
     if (!s_mods_ctor || !s_mods_init || !s_mods_update || !s_mods_render || !s_menu_set_state || !s_g_menu_manager ||

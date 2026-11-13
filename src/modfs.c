@@ -291,10 +291,17 @@ static bool resolve_ci(char *buf, size_t cap) {
 }
 
 /* the real path of a mod file for the game path p, or NULL (then the game looks it up itself) */
+/* our own anm2 for the main menu (main.c menu_anm2_write): a game path to a file in the save data */
+static const char kMenuAnm2Path[] = "gfx/ui/main menu/isaaclua_menu.anm2";
+static const char *s_menu_anm2;
+void modfs_set_menu_anm2(const char *real) { s_menu_anm2 = real; }
+
 const char *modfs_resolve(const char *p, char *buf, size_t cap) {
     size_t n = strlen(p);
     if (n == 0 || n + 1 > cap) return NULL;
     normalise(p, buf);
+    if (s_menu_anm2 && (eq_ci(buf, kMenuAnm2Path) || (strncmp(buf, "resources/", 10) == 0 && eq_ci(buf + 10, kMenuAnm2Path))))
+        return s_menu_anm2;
     if (strncmp(buf, "rom:/mods/", 10) == 0)
         return file_exists(buf) || resolve_ci(buf, cap) ? buf : NULL;
     if (!s_count) return NULL;

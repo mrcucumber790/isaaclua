@@ -7,7 +7,7 @@
 -- repplus_data.lua (tools/gen_data.py), read once and dropped. Turning the mod off in the Mods menu
 -- turns all of this off. Full change list and status: isaac-repplus/CHANGES.md.
 (function()
-  local VERSION = "0.6.113"
+  local VERSION = "0.6.114"
   REPPLUS_VERSION = VERSION
   local DIR, NAME = "rom:/mods/isaac-repplus/", "isaac-repplus"
   local LAST_VANILLA = 732
@@ -720,6 +720,25 @@
       end
     end)
   end
+  -- Mega Fatty's red champion (264.0.1) vomit stream (REP+ 1.9.7.11; wiki: its shots flew too high to ever hit).
+  -- REP+ 0x4613db (Puking, every 3 frames, 9 boss projectiles): HeightModifier -40 instead of -50 (1.7.9b
+  -- 0x451632), FallingSpeedModifier +1.5 instead of -2, fired from Position - (0, 8) instead of Position.
+  -- Applied as the difference on the shot's first update.
+  do
+    Isaac.AddPriorityCallback(mod, ModCallbacks.MC_POST_PROJECTILE_UPDATE, 10000, function(_, pr)
+      if state ~= "ready" or pr.FrameCount > 1 or pr.SpawnerType ~= 264 then return end
+      local npc = pr.SpawnerEntity
+      if not npc or npc.Variant ~= 0 or npc.SubType ~= 1 then return end
+      local d = pr:GetData()
+      if d.rp_mfat then return end
+      d.rp_mfat = true
+      if npc:GetSprite():GetAnimation() ~= "Puking" then return end
+      pr.Height = pr.Height + 10
+      pr.FallingSpeed = pr.FallingSpeed + 3.5
+      pr.Position = pr.Position + Vector(0, -8)
+    end)
+  end
+
   -- Ultra Greed's coins (293.0-3) devolve into a penny with D10 (REP+ 1.9.7.4: entities2.xml gives each a
   -- <devolve id="5.20.0"/>; 1.7.9b has no devolve entry, so Game::DevolveEnemy skips them).
   Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_ITEM, -10000, function(_, item)

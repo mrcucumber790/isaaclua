@@ -39,6 +39,7 @@ size_t modfs_count(void);
 const char *modfs_safe_path(const char *in, char *out, size_t cap);
 const char *modfs_resolve(const char *path, char *buf, size_t cap);
 void *modfs_hook(void *orig);
+void modfs_set_menu_anm2(const char *real);  // the main menu anm2 (main.c), in the save data
 
 /* native.c: core.* FFI for src/api.lua */
 void native_open(lua_State *L);

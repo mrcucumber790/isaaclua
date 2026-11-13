@@ -3828,3 +3828,22 @@ do
   class_global("TemporaryEffects", te_mt, te_mt)
 end
 debug.getregistry()["isaaclua.EG"] = EG  -- test/apichk: which entity fields are still stored only
+-- the main menu's MODS entry and cursor without REP+ (main.c hk_game_menu_render): anim "Mods" or "Cursor" of
+-- gfx/ui/main menu/isaaclua_menu.anm2 at x, y; false while that can't be drawn (the menu font is used then)
+function _isaaclua_menu_item(anim, x, y)
+  local m = rawget(_G, "_isaaclua_menu_spr")
+  if type(m) == "number" then  -- not loaded: the save data (where the anm2 is written) may not be mounted yet
+    if m > 0 then rawset(_G, "_isaaclua_menu_spr", m - 1) return false end
+    m = nil
+  end
+  if m == nil then
+    m = Sprite()
+    m:Load("gfx/ui/main menu/isaaclua_menu.anm2", true)
+    if not m:IsLoaded() then m = 120 end
+    rawset(_G, "_isaaclua_menu_spr", m)
+  end
+  if type(m) == "number" then return false end
+  m:Play(anim, true)
+  m:Render(Vector(x, y))
+  return true
+end
