@@ -34,13 +34,44 @@ Minimap API, StageAPI, Epiphany, Fiend Folio, Animated Items, Da Rules and GoodT
 You need a Switch with Atmosphère and Repentance on the current update (PC 1.7.9b content). On any
 other build of the game the plugin turns itself off.
 
-1. Download `isaaclua_v<version>.zip` from [Releases](https://github.com/mrcucumber790/isaaclua/releases).
+1. Download `isaaclua_v<version>.zip` (or `isaaclua_v<version>-repplus.zip`, see below) from [Releases](https://github.com/mrcucumber790/isaaclua/releases).
 2. Copy the `atmosphere/` folder from the zip to the root of the SD card.
 3. Put PC mods into `sd:/atmosphere/contents/010021C000B6A000/romfs/mods/`, one folder per mod, exactly
    as in the PC `mods` folder. You can take them from your PC game or from the Steam Workshop.
 4. Start the game. In a run, a line at the top of the screen shows `isaaclua v1.0.5 (Lua 5.3.6), N mod(s) loaded`.
 
 To turn a mod off, put an empty `disable.it` file in its folder, or use the Mods menu.
+
+## Repentance+ build
+
+Every release has two files:
+
+- `isaaclua_v<version>.zip`: the mod loader only.
+- `isaaclua_v<version>-repplus.zip`: the same loader plus the `isaac-repplus` mod (now **0.6.113**). It brings
+  the changes of Repentance+ (the newest PC update) to the Switch game. It is not a port of the PC
+  executable: it is a mod made from the REP+ game data and from the REP+ program code, checked on a Switch.
+
+Install it the same way. To go back to plain Repentance, turn `isaac-repplus` off in the Mods menu and
+restart the game. While it is on, mods see `REPENTANCE_PLUS = true` and use their REP+ code paths.
+
+What is done:
+
+- Item, trinket, card, pill and character data from the REP+ files: quality, charges, prices, tags,
+  transformations and all item pools.
+- Almost all REP+ changes to items, trinkets, pills, bosses and enemies, including those from the
+  1.9.7.4–1.9.7.17 patch notes.
+- Final boss armor, REP+ boss animations, about 2/3 of the new sounds, the Lil Portal bedroom.
+- The "My Stuff" page on the pause screen, with REP+ item descriptions.
+- The REP+ Lua API additions (`FontRenderSettings`, `Font:DrawString` with settings, `KillWithSource` and others).
+
+What is not done:
+
+- REP+ visual changes: new heart art, boss intro screens, Deeds, the new HUD, the compact pause menu.
+- Mega Fatty and Camillo Jr. behaviour changes, and some small bug fixes from the patch notes.
+- About 1/3 of the new sounds.
+- Online play.
+
+The full list of REP+ changes with their status is `REPPLUS_CHANGES.ru.md` in the zip (in Russian).
 
 ## Settings
 

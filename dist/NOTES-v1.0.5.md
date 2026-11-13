@@ -1,6 +1,8 @@
 **isaaclua 1.0.5** lets PC Lua mods run on The Binding of Isaac: Repentance for Nintendo Switch. It needs Atmosphère.
 
-**The zip holds only the loader and its settings. It contains no mods.**
+Two files:
+- **`isaaclua_v1.0.5.zip`**: only the loader and its settings, no mods.
+- **`isaaclua_v1.0.5-repplus.zip`**: the loader plus the Repentance+ mod `isaac-repplus` 0.6.113. What it does and what is missing: [README](https://github.com/mrcucumber790/isaaclua#repentance-build).
 
 ### Install
 1. Copy `atmosphere/` from the zip to the root of the SD card. If you are updating, only `exefs/subsdk8` changed.
