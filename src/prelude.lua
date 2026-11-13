@@ -251,9 +251,13 @@ end
 
 -- key: value the callback's optional parameter is compared with (entity type / variant, cache flag...).
 -- mods whose screen drawing is laid out for PC's 480x270 at least: shrunk to fit the Switch's screen
+-- isaaclua.ini pc_screen (on by default): every mod sees PC's 480x270 screen and its drawing is mapped onto
+-- the Switch's 426x240 (sprite.c g_ui_pc); not the loader's own code and REP+ (drawn for the real screen)
 local ui_scales = setmetatable({}, {__index = function(t, name)
+  if core.pc_screen and core.pc_screen() and name ~= "isaaclua" and name ~= "isaac-repplus" then return "pc" end
   if name == "Mod Config Menu" then return core.menu_scale and core.menu_scale() end
 end})
+rawset(ui_scales, 0, false)  -- [0]: the running callback's scale, put back after a nested Run (no new local: the main chunk is at 200)
 local running_mod = nil  -- the mod whose callback is running (api.lua: per-mod input quirks)
 -- isaaclua.ini perf = 1: time spent in each mod's callbacks, read and reset by PerfReport
 local perf_on = core.perf()
@@ -319,7 +323,8 @@ function Run(id, key, ...)
         scale = scale_of[name]
         if scale == nil then scale = ui_scales[name] or false; scale_of[name] = scale end
       end
-      if scale then core.ui_scale(scale) end
+      local outer_scale = rawget(ui_scales, 0)
+      if scale ~= outer_scale then core.ui_scale(scale or 1); rawset(ui_scales, 0, scale) end
       local outer = running_mod
       running_mod = mod
       local t0 = perf_on and core.tick()
@@ -329,7 +334,7 @@ function Run(id, key, ...)
         perf_ticks[name] = (perf_ticks[name] or 0) + core.tick() - t0
       end
       running_mod = outer
-      if scale then core.ui_scale(1) end
+      if rawget(ui_scales, 0) ~= outer_scale then core.ui_scale(outer_scale or 1); rawset(ui_scales, 0, outer_scale) end
       if not ok then
         core.error((mod and mod.Name or "?") .. ": " .. tostring(r))
       elseif r ~= nil and result == nil and not internal then

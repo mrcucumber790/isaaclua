@@ -533,9 +533,24 @@ static int c_language(lua_State *L) {
 }
 
 /* core.ui_scale(k): draw the running mod's sprites and text k times smaller around the screen centre */
+/* core.ui_scale("pc"): the running mod sees PC's 480x270 screen (isaaclua.ini pc_screen = 1, sprite.c g_ui_pc) */
 static int c_ui_scale(lua_State *L) {
+    if (lua_type(L, 1) == LUA_TSTRING) {
+        g_ui_pc = true, g_ui_scale = 1.0f;
+        return 0;
+    }
+    g_ui_pc = false;
     g_ui_scale = (float)luaL_optnumber(L, 1, 1.0);
     return 0;
+}
+/* core.pc_screen() -> isaaclua.ini pc_screen = 1; core.ui_pc() -> the running mod sees 480x270 now */
+static int c_pc_screen(lua_State *L) { lua_pushboolean(L, g_pc_screen); return 1; }
+static int c_ui_pc(lua_State *L) { lua_pushboolean(L, g_ui_pc); return 1; }
+/* core.ui_unscale(x, y): a real screen position or offset in the running mod's screen space */
+static int c_ui_unscale(lua_State *L) {
+    lua_pushnumber(L, ui_unscale_x((float)luaL_checknumber(L, 1)));
+    lua_pushnumber(L, ui_unscale_y((float)luaL_checknumber(L, 2)));
+    return 2;
 }
 /* core.menu_scale() -> isaaclua.ini "menu_scale", else what fits a PC 480x270 menu on this screen */
 static int c_menu_scale(lua_State *L) {
@@ -850,7 +865,7 @@ void native_open(lua_State *L) {  // adds the functions to the table on the stac
     static const luaL_Reg f[] = {
         {"sym", c_sym},       {"call", c_call},       {"peek", c_peek}, {"mem_ok", c_mem_ok},       {"poke", c_poke},
         {"offset", c_offset}, {"buf", c_buf},         {"ptr", c_ptr},         {"entity", c_entity},
-        {"gameptr", c_game}, {"managerptr", c_manager}, {"roomptr", c_room}, {"grid_at", c_grid_at}, {"grid_desc", c_grid_desc}, {"missing", c_missing}, {"ms", c_ms}, {"make_type", c_make_type}, {"ent_dispatch", api_ent_dispatch}, {"has_query_radius", c_has_query_radius}, {"tick", c_tick}, {"spawn", c_spawn}, {"perf", c_perf}, {"perf_line", c_perf_line},       {"entity_ext", c_entity_ext}, {"resolve", c_resolve}, {"language", c_language}, {"ui_scale", c_ui_scale}, {"save_ready", c_save_ready}, {"touch", c_touch}, {"save_read", c_save_read}, {"save_write", c_save_write}, {"menu_scale", c_menu_scale},
+        {"gameptr", c_game}, {"managerptr", c_manager}, {"roomptr", c_room}, {"grid_at", c_grid_at}, {"grid_desc", c_grid_desc}, {"missing", c_missing}, {"ms", c_ms}, {"make_type", c_make_type}, {"ent_dispatch", api_ent_dispatch}, {"has_query_radius", c_has_query_radius}, {"tick", c_tick}, {"spawn", c_spawn}, {"perf", c_perf}, {"perf_line", c_perf_line},       {"entity_ext", c_entity_ext}, {"resolve", c_resolve}, {"language", c_language}, {"ui_scale", c_ui_scale}, {"pc_screen", c_pc_screen}, {"ui_pc", c_ui_pc}, {"ui_unscale", c_ui_unscale}, {"save_ready", c_save_ready}, {"touch", c_touch}, {"save_read", c_save_read}, {"save_write", c_save_write}, {"menu_scale", c_menu_scale},
         {"box", c_box}, {"unbox", c_unbox}, {"seed_effect", c_seed_effect}, {"restart", c_restart}, {"level_init", c_level_init},
         {"autotest", c_autotest}, {"autolog", c_autolog}, {"errors", c_errors}, {"memfree", c_memfree}, {"meminfo", c_meminfo}, {"memtotal", c_memtotal},
         {NULL, NULL},

@@ -7,7 +7,7 @@ adds Lua 5.3 (the same version as on PC) to the game and rebuilds the PC modding
 game's own code. PC mods (`main.lua`, `RegisterMod`, `mod:AddCallback(...)`, `resources/`, `content/`)
 are loaded as they are, without changing their files.
 
-Current version: **1.0.0**.
+Current version: **1.0.2**.
 
 ## What works
 
@@ -38,7 +38,7 @@ other build of the game the plugin turns itself off.
 2. Copy the `atmosphere/` folder from the zip to the root of the SD card.
 3. Put PC mods into `sd:/atmosphere/contents/010021C000B6A000/romfs/mods/`, one folder per mod, exactly
    as in the PC `mods` folder. You can take them from your PC game or from the Steam Workshop.
-4. Start the game. In a run, a line at the top of the screen shows `isaaclua v1.0.0 (Lua 5.3.6), N mod(s) loaded`.
+4. Start the game. In a run, a line at the top of the screen shows `isaaclua v1.0.2 (Lua 5.3.6), N mod(s) loaded`.
 
 To turn a mod off, put an empty `disable.it` file in its folder, or use the Mods menu.
 
@@ -49,6 +49,7 @@ Settings live in `romfs/isaaclua.ini`. Every option is described inside the file
 | Setting | What it does |
 |---|---|
 | `language = ru` | The language mods see. By default it is the game's language. |
+| `pc_screen = 0` | Turns off the PC screen mode, so mods see the real 426x240 screen. |
 | `errors = 1` | Shows mod errors and warnings at the top of the screen. They are off by default and always go to `errors.log`. |
 | `perf = 1` | Shows FPS, Lua time and the slowest mods at the bottom of the screen. |
 | `menu_scale = 0.9` | The size of Mod Config Menu. |
@@ -61,8 +62,10 @@ Settings live in `romfs/isaaclua.ini`. Every option is described inside the file
   standard API) don't work.
 - **No shaders on Switch.** `MC_GET_SHADER_PARAMS` still runs, because mods draw HUD from it, but shader
   effects are not shown.
-- **Smaller screen.** The Switch screen is 426x240, not 480x270. Mods that draw at fixed positions near
-  the right or bottom edge can end up off screen.
+- **Smaller screen.** The Switch screen is 426x240, not 480x270. By default mods see a 480x270 screen,
+  and what they draw is shrunk by about 11% to fit (`pc_screen`). This puts HUDs made for PC where they
+  are on PC. Mod text and sprites look slightly smaller than on PC, and so do mod sprites drawn over the
+  game world.
 - **Speed.** Big mods are slower than on PC. Fiend Folio runs at 16–30 FPS. Stats+ alone caps the game at
   about 30 FPS. With an average set of mods, the game holds 60 FPS.
 - **Memory and file count.**

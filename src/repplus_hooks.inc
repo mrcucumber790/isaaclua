@@ -1846,6 +1846,7 @@ static int core_repplus(lua_State *l) {
     return 32;
 }
 
+static void rp_bosses_install(const ModView *v);  // repplus_bosses.inc
 static void repplus_install(const ModView *v, const struct nnro_Module *m) {
 #ifndef ISAACLUA_HOST_TEST
     RP.base = v->base;
@@ -1980,7 +1981,10 @@ static void repplus_install(const ModView *v, const struct nnro_Module *m) {
                                              (void *)rp_hk_add_slowing);
     if (!s_rp_add_slowing) plugin_log("[isaac-repplus] Entity::AddSlowing GOT slot not found, no Evil Charm web immunity");
     rp_mystuff_install(v);
+    rp_bosses_install(v);  // last: its hooks chain to the ones above
 #else
     (void)v; (void)m;
 #endif
 }
+
+#include "repplus_bosses.inc"

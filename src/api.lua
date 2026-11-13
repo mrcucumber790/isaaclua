@@ -1032,7 +1032,9 @@ function Isaac.CountBosses() return count_enemies(true) end
 -- Room::WorldToScreenPosition = GetRenderPosition(pos) + Room render scroll offset + screen shake; the
 -- render position is without the last two (rooms bigger than the Switch's screen scroll, greed mode)
 function Isaac.WorldToRenderPosition(pos)
-  return Isaac.WorldToScreen(pos) - room:GetRenderScrollOffset() - game.ScreenShakeOffset
+  local off = room:GetRenderScrollOffset() + game.ScreenShakeOffset
+  if C.ui_pc and C.ui_pc() then off = Vector(C.ui_unscale(off.X, off.Y)) end
+  return Isaac.WorldToScreen(pos) - off
 end
 local moddata_file = {}
 -- the Mod methods themselves: a mod table may have its own SaveData field (Doki Doki Repentance)
@@ -1123,8 +1125,11 @@ function Input.IsMouseBtnPressed(button)
 end
 function Input.GetMousePosition(gameCoords)
   touch()
-  if gameCoords then return screen_to_world(touch_pos) end
-  return Vector(touch_pos.X, touch_pos.Y)
+  local p = Vector(touch_pos.X, touch_pos.Y)
+  -- isaaclua.ini pc_screen: the touch position in the mod's 480x270, as WorldToScreen gives it
+  if C.ui_pc and C.ui_pc() then p = Vector(C.ui_unscale(p.X, p.Y)) end
+  if gameCoords then return screen_to_world(p) end
+  return p
 end
 function Isaac.ScreenToWorld(p) return screen_to_world(p) end
 

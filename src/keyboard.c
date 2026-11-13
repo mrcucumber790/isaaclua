@@ -503,6 +503,7 @@ static char *trim(char *s) {
 char g_mod_language[8];
 float g_menu_scale;
 bool g_perf;  // isaaclua.ini perf = 1: frame timings on screen
+bool g_pc_screen = true;  // isaaclua.ini pc_screen: mods see PC's 480x270 screen (on unless "pc_screen = 0")
 /* isaaclua.ini errors = 1: mod errors and warnings on screen (always in errors.log). Off by default in the
  * release (Egor, 1.0.0: players should not see them), on in the debug build */
 #ifdef ISAACLUA_DEBUG
@@ -559,6 +560,8 @@ void kb_load_config(void) {
                 extern bool g_autotest_shots;
                 g_autotest_shots = !(strcmp(v, "0") == 0 || strcasecmp(v, "off") == 0 || strcasecmp(v, "false") == 0);
 #endif
+            } else if (strcasecmp(k, "pc_screen") == 0) {
+                g_pc_screen = strcmp(v, "1") == 0 || strcasecmp(v, "on") == 0 || strcasecmp(v, "true") == 0;
             } else if (strcasecmp(k, "errors") == 0) {
                 g_errors_on = strcmp(v, "1") == 0 || strcasecmp(v, "on") == 0 || strcasecmp(v, "true") == 0;
             } else if (strcasecmp(k, "perf") == 0) {

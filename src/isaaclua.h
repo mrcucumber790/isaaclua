@@ -64,8 +64,13 @@ bool kb_is_open(void);
 bool kb_mouse(float *x, float *y, int *buttons);  // cursor mode on: its screen position, buttons 1 left / 2 right
 bool kb_pad_down(int button);  // PC Controller.* ids 0-15
 bool kb_pad_triggered(int button);
-extern float g_ui_scale;             // sprite.c: screen drawing scale of the running mod
+extern float g_ui_scale;             // sprite.c: screen drawing scale of the running mod (1 = none)
+extern bool g_ui_pc;                 // the running mod sees PC's 480x270 screen (isaaclua.ini pc_screen)
 void ui_scale_point(float *x, float *y);
+void ui_scale_xy(float *sx, float *sy);  // a size (sprite scale, text scale) in the running mod's scale
+float ui_unscale_x(float x);          // a real screen position as the running mod sees it
+float ui_unscale_y(float y);
+extern bool g_pc_screen;             // isaaclua.ini pc_screen = 1
 extern float g_menu_scale;           // isaaclua.ini "menu_scale", 0 = fit the screen
 extern char g_mod_language[8];       // isaaclua.ini "language", empty = the game's
 

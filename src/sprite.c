@@ -372,16 +372,34 @@ static void apply_look(SpriteUD *s, u8 *a) {
 /* g_ui_scale: a mod's screen drawing shrunk around the screen centre (a menu laid out for PC's 480x270
  * on the Switch's smaller screen); set by the prelude while that mod's callback runs */
 float g_ui_scale = 1.0f;
+/* g_ui_pc (isaaclua.ini pc_screen = 1, set while a mod's callback runs): the mod sees PC's 480x270 screen.
+ * GetScreenWidth/Height give 480 and 270, WorldToScreen and the touch position come in that space, and what
+ * the mod draws is mapped back onto the real 426x240 (x * 426/480 from the top left, y * 240/270). A mod
+ * that places its HUD with numbers made for 480x270 then lands where it does on PC. */
+bool g_ui_pc;
+static float scr_w(void) { return G.width ? *G.width : 480.0f; }
+static float scr_h(void) { return G.height ? *G.height : 270.0f; }
 void ui_scale_point(float *x, float *y) {
-    float cx = (G.width ? *G.width : 480.0f) / 2, cy = (G.height ? *G.height : 270.0f) / 2;
+    if (g_ui_pc) {
+        *x *= scr_w() / 480.0f, *y *= scr_h() / 270.0f;
+        return;
+    }
+    float cx = scr_w() / 2, cy = scr_h() / 2;
     *x = cx + (*x - cx) * g_ui_scale;
     *y = cy + (*y - cy) * g_ui_scale;
 }
+void ui_scale_xy(float *sx, float *sy) {
+    if (g_ui_pc) *sx *= scr_w() / 480.0f, *sy *= scr_h() / 270.0f;
+    else *sx *= g_ui_scale, *sy *= g_ui_scale;
+}
+float ui_unscale_x(float x) { return g_ui_pc ? x * 480.0f / scr_w() : x; }
+float ui_unscale_y(float y) { return g_ui_pc ? y * 270.0f / scr_h() : y; }
 static void ui_scale_sprite(SpriteUD *s, u8 *a, Vector2 *pos) {
-    if (g_ui_scale == 1.0f || s->ent) return;
+    if (g_ui_scale == 1.0f && !g_ui_pc) return;
     ui_scale_point(&pos->x, &pos->y);
+    if (s->ent) return;  // an entity's own sprite keeps its size (only the position the mod gave is mapped)
     Vector2 *sc = (Vector2 *)(a + kAnm_Scale);
-    sc->x *= g_ui_scale, sc->y *= g_ui_scale;
+    ui_scale_xy(&sc->x, &sc->y);
 }
 
 static int s_render(lua_State *L) {  // Render(pos, topLeftClamp, bottomRightClamp)
@@ -716,6 +734,7 @@ static int l_world_to_screen(lua_State *L) {
     Vector2 p = opt_vector(L, 1);
     u8 *r = room_ptr();
     if (r && G.world_to_screen) p = G.world_to_screen(r, p);
+    p.x = ui_unscale_x(p.x), p.y = ui_unscale_y(p.y);  // isaaclua.ini pc_screen: in the mod's 480x270
     lua_getglobal(L, "Vector");
     lua_pushnumber(L, p.x);
     lua_pushnumber(L, p.y);

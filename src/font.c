@@ -173,9 +173,12 @@ static int draw(lua_State *L, bool scaled) {
     bool center = lua_toboolean(L, i + 2);
     u8 *o = font_of(f);
     if (!o || !g_in_render || !G.draw_utf8 || !G.color_ctor) return 0;
-    if (g_ui_scale != 1.0f) {
+    if (g_ui_scale != 1.0f || g_ui_pc) {
+        float bx = (float)box, by = 0;
         ui_scale_point(&x, &y);
-        sx *= g_ui_scale, sy *= g_ui_scale, box = (u32)(box * g_ui_scale + 0.5f);
+        ui_scale_xy(&sx, &sy);
+        ui_scale_xy(&bx, &by);
+        box = (u32)(bx + 0.5f);
     }
     ColorStorage color;
     G.color_ctor(&color, c[0], c[1], c[2], c[3]);

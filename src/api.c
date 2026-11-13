@@ -210,6 +210,7 @@ static int l_debug_string(lua_State *L) {
 static void render_text(lua_State *L, const char *s, float x, float y, float sx, float sy, int ci) {
     u8 *mgr = manager_ptr();
     if (!g_in_render || !mgr || !G.draw_utf8 || !G.color_ctor) return;  // only valid in POST_RENDER
+    if (g_ui_scale != 1.0f || g_ui_pc) ui_scale_point(&x, &y), ui_scale_xy(&sx, &sy);
     float c[4];
     for (int i = 0; i < 4; i++) c[i] = (float)luaL_optnumber(L, ci + i, 1.0);
     ColorStorage color;
@@ -327,11 +328,11 @@ static int l_count_entities(lua_State *L) {
 }
 
 static int l_screen_w(lua_State *L) {
-    lua_pushnumber(L, G.width ? *G.width : 480.0f);
+    lua_pushnumber(L, g_ui_pc ? 480.0f : G.width ? *G.width : 480.0f);
     return 1;
 }
 static int l_screen_h(lua_State *L) {
-    lua_pushnumber(L, G.height ? *G.height : 270.0f);
+    lua_pushnumber(L, g_ui_pc ? 270.0f : G.height ? *G.height : 270.0f);
     return 1;
 }
 

@@ -7,7 +7,7 @@
 -- repplus_data.lua (tools/gen_data.py), read once and dropped. Turning the mod off in the Mods menu
 -- turns all of this off. Full change list and status: isaac-repplus/CHANGES.md.
 (function()
-  local VERSION = "0.6.109"
+  local VERSION = "0.6.110"
   REPPLUS_VERSION = VERSION
   local DIR, NAME = "rom:/mods/isaac-repplus/", "isaac-repplus"
   local LAST_VANILLA = 732
@@ -353,6 +353,17 @@
   end)
   -- Plan C (475), REP+ UseActiveItem 0x5be295: the death comes after 300 frames in Delirium's room (boss 70)
   -- and 345 in Mother's (88) instead of 90 (Switch Player+0x1d04, set to 90 by UseActiveItem 0x31087c)
+  -- Ultra Greed's coins (293.0-3) devolve into a penny with D10 (REP+ 1.9.7.4: entities2.xml gives each a
+  -- <devolve id="5.20.0"/>; 1.7.9b has no devolve entry, so Game::DevolveEnemy skips them).
+  Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_ITEM, -10000, function(_, item)
+    if state ~= "ready" or item ~= 285 then return end
+    for _, e in ipairs(Isaac.FindByType(293, -1, -1, false, false)) do
+      if e.Variant <= 3 and e:Exists() and not e:IsDead() then
+        Isaac.Spawn(5, 20, 1, e.Position, Vector(0, 0), nil)
+        e:Remove()
+      end
+    end
+  end, 285)
   Isaac.AddPriorityCallback(mod, ModCallbacks.MC_USE_ITEM, -10000, function(_, _, _, p)
     if state ~= "ready" or not p then return end
     local boss = Game():GetRoom():GetBossID()
